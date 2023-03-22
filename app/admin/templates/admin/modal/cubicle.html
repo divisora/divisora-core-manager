@@ -1,0 +1,57 @@
+<div class="modal-content">
+  <form id="form-modal" action="/admin/modal/cubicle{% if 'id' in obj %}/{{ obj.id }}{% endif %}">
+    <div class="modal-header">
+      <span>{% if 'name' in obj %}Edit{% else %}Add{% endif %} cubicle</span>
+      <span id="modal-close" class="material-symbols-outlined ">close</span>
+    </div>
+    <div class="modal-body">
+      <div class="box">
+        <label for="name">Name</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">label</span>
+        </div>
+        <input type="text" name="name" value="{% if 'name' in obj %}{{ obj.name }}{% endif %}" placeholder="openbox-latest" autofocus="on" required>
+      </div>
+      <div class="box">
+        <label for="select-user">User</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">person</span>
+        </div>
+        <select id="select-user" name="user">
+          <option value="">None</option>
+          {% for name, selected in obj.users.items() %}
+          <option value="{{ name }}"{% if selected %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="box">
+        <label for="select-image">Images</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">image</span>
+        </div>
+        <select id="select-image" name="image">
+          <option value="">None</option>
+          {% for name, selected in obj.images.items() %}
+          <option value="{{ name }}"{% if selected %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="box">
+        <label for="select-node">Nodes</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">dns</span>
+        </div>
+        <select id="select-node" name="node">
+          <option value="">None</option>
+          {% for name, selected in obj.nodes.items() %}
+          <option value="{{ name }}"{% if selected %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer update">
+      <button type="reset" class="reset"><span class="material-symbols-outlined ">restart_alt</span></button>
+      <button type="submit" class="submit"><span class="material-symbols-outlined ">save</span></button>
+    </div>
+  </form>
+</div>

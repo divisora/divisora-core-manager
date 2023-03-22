@@ -1,0 +1,42 @@
+<div class="modal-content">
+  <form id="form-modal" action="/admin/modal/image{% if 'id' in obj %}/{{ obj.id }}{% endif %}">
+    <div class="modal-header">
+      <span>{% if 'name' in obj %}Edit{% else %}Add{% endif %} image</span>
+      <span id="modal-close" class="material-symbols-outlined ">close</span>
+    </div>
+    <div class="modal-body">
+      <div class="box">
+        <label for="name">Name</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">label</span>
+        </div>
+        <input type="text" name="name" value="{% if 'name' in obj %}{{ obj.name }}{% endif %}" placeholder="openbox-latest" autofocus="on" required>
+      </div>
+      <div class="box">
+        <label for="source">Source</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">image</span>
+        </div>
+        <input type="text" name="source" value="{% if 'source' in obj %}{{ obj.source }}{% endif %}" placeholder="divisora/cubicle-openbox:latest" required>
+      </div>
+      <div class="box">
+        <label for="cpu-limit">CPU Limit</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">square_foot</span>
+        </div>
+        <input type="text" name="cpu-limit" value="{% if 'cpu_limit' in obj %}{{ obj.cpu_limit }}{% endif %}" value="1" placeholder="1" required>
+      </div>
+      <div class="box">
+        <label for="mem-limit">Mem Limit</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">square_foot</span>
+        </div>
+        <input type="text" name="mem-limit" value="{% if 'mem_limit' in obj %}{{ obj.mem_limit }}{% endif %}" value="1g" placeholder="1g" required>
+      </div>      
+    </div>
+    <div class="modal-footer update">
+      <button type="reset" class="reset"><span class="material-symbols-outlined ">restart_alt</span></button>
+      <button type="submit" class="submit"><span class="material-symbols-outlined ">save</span></button>
+    </div>
+  </form>
+</div>

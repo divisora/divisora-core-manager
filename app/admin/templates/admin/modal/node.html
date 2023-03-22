@@ -1,0 +1,35 @@
+<div class="modal-content">
+  <form id="form-modal" action="/admin/modal/node{% if 'id' in obj %}/{{ obj.id }}{% endif %}">
+    <div class="modal-header">
+      <span>{% if 'name' in obj %}Edit{% else %}Add{% endif %} node</span>
+      <span id="modal-close" class="material-symbols-outlined ">close</span>
+    </div>
+    <div class="modal-body">
+      <div class="box">
+        <label for="name">Name</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">label</span>
+        </div>
+        <input type="text" name="name" value="{% if 'name' in obj %}{{ obj.name }}{% endif %}" placeholder="node-1" autofocus="on" required>
+      </div>
+      <div class="box">
+        <label for="ip_address">IP</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">dns</span>
+        </div>
+        <input type="text" name="ip_address" value="{% if 'ip_address' in obj %}{{ obj.ip_address }}{% endif %}" placeholder="192.168.0.1" required>
+      </div>
+      <div class="box">
+        <label for="network_range">Network Range</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">arrow_range</span>
+        </div>
+        <input type="text" name="network_range" value="{% if 'network_range' in obj %}{{ obj.network_range }}{% endif %}" value="192.168.1.0/24" placeholder="1" required>
+      </div>
+    </div>
+    <div class="modal-footer update">
+      <button type="reset" class="reset"><span class="material-symbols-outlined ">restart_alt</span></button>
+      <button type="submit" class="submit"><span class="material-symbols-outlined ">save</span></button>
+    </div>
+  </form>
+</div>

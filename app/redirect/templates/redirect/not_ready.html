@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="error-container">
+  <div>
+    <p>Cubicle is not ready yet, retrying in <span id="seconds">5</span> seconds</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script type="text/javascript">
+    var seconds = 5;
+    var timer;
+
+    function redirect() {
+        try {
+            const queryString = window.location.search;
+            const urlParams = new URLSearchParams(queryString);
+            var next_url = new URL(urlParams.get('next'));
+        } catch(err) {
+            var next_url = new URL(window.location.origin);
+            console.log(next_url);
+            return;
+        } finally {
+            document.location.href = next_url;
+        }
+    }
+
+    function updateSecs() {
+        seconds--;
+        document.getElementById("seconds").innerHTML = seconds;
+        if (seconds <= 0) {
+            clearInterval(timer);
+            redirect();
+        }
+    }
+
+    function countdownTimer() {
+        timer = setInterval(function () {
+             updateSecs()
+        }, 1000);
+    }
+    countdownTimer();
+</script>
+{% endblock %}
+

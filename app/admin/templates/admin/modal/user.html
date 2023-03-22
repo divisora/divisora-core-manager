@@ -1,0 +1,65 @@
+<div class="modal-content">
+  <form id="form-modal" action="/admin/modal/user{% if 'id' in obj %}/{{ obj.id }}{% endif %}" method="post">
+    <div class="modal-header">
+      <span>{% if 'username' in obj %}Edit{% else %}Add{% endif %} user</span>
+      <span id="modal-close" class="material-symbols-outlined ">close</span>
+    </div>
+    <div class="modal-body">
+      <div class="box">
+        <label for="full_name">Full Name</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">badge</span>
+        </div>
+        <input type="text" name="full_name" placeholder="Full Name" value="{% if 'name' in obj %}{{ obj.name }}{% endif %}" autofocus="on" required>
+      </div>
+      <div class="box">
+        <label for="username">Username</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">person</span>
+        </div>
+        <input type="text" name="username" placeholder="Username" value="{% if 'username' in obj %}{{ obj.name }}{% endif %}" {% if 'username' in obj %}disabled{% endif %} required>
+      </div>
+      {% if 'username' in obj %}
+      <div class="box">
+        <label for="current_password">Current password</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">key</span>
+        </div>
+        <input type="password" name="current_password" placeholder="current">
+      </div>
+      {% endif %}
+      <div class="box">
+        <label for="new_password">New password</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">lock</span>
+        </div>
+        <input type="password" name="new_password" placeholder="new">
+      </div>
+      <div class="box">
+        <label for="new_password_confirm">Confirm password</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">lock</span>
+        </div>
+        <input type="password" name="new_password_confirm" placeholder="confirm">
+      </div>
+      {% if 'username' not in obj %}
+      <div class="box">
+        <label for="select-image">Images</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">image</span>
+        </div>
+        <select id="select-image" name="image">
+          <option value="">None</option>
+          {% for name, selected in obj.images.items() %}
+          <option value="{{ name }}"{% if selected %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+    </div>
+    <div class="modal-footer update">
+      <button type="reset" class="reset"><span class="material-symbols-outlined ">restart_alt</span></button>
+      <button type="submit" class="submit"><span class="material-symbols-outlined ">save</span></button>
+    </div>
+  </form>
+</div>

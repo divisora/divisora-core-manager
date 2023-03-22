@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="status" class="status">
+  <!-- Placeholder-->
+</div>
+<div id="modal" class="modal">
+  <!-- Placeholder-->
+</div>
+<div id="admin-box">
+  <div id="admin-users-container">
+    <div class="header">
+      <h2>Users</h2>
+      <span class="material-symbols-outlined edit" title="Add user" data-href="/admin/modal/user">person_add</span>
+    </div>
+    <table>
+      <tr>
+        <th>id</th>
+        <th>username</th>
+        <th>name</th>
+        <th class="center">admin</th>
+        <th></th>
+      </tr>
+      {% for user in users %}
+      <tr>
+        <td>{{ user.id }}</td>
+        <td>{{ user.username }}</td>
+        <td>{{ user.name }}</td>
+        <td class="center">{{ user.admin }}</td>
+        <td class="options">
+          <span class="material-symbols-outlined edit" data-href="/admin/modal/user/{{ user.id }}">edit</span>
+          <span class="material-symbols-outlined delete" data-href="/admin/modal/user/{{ user.id }}">delete</span>
+        </td>        
+      </tr>
+      {% endfor %}
+    </table>
+
+  </div>
+  <div id="admin-nodes-container">
+    <div class="header">
+      <h2>Nodes</h2>
+      <span class="material-symbols-outlined edit" title="Add node" data-href="/admin/modal/node">domain_add</span>
+    </div>
+    <table>
+      <tr>
+        <th>name</th>
+        <th>ip</th>
+        <th>range</th>
+        <th class="center">status</th>
+        <th></th>
+      </tr>
+      {% for node in nodes %}
+      <tr>
+        <td>{{ node.name }}</td>
+        <td>{{ node.ip }}</td>
+        <td>{{ node.network_range }}</td>
+        <td class="status-ok center">OK</td>
+        <td class="options">
+          <span class="material-symbols-outlined edit" data-href="/admin/modal/node/{{ node.id }}">edit</span>
+          <span class="material-symbols-outlined delete" data-href="/admin/modal/node/{{ node.id }}">delete</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div id="admin-images-container">
+    <div class="header">
+      <h2>Images</h2>
+      <span class="material-symbols-outlined edit" title="Add image" data-href="/admin/modal/image">playlist_add</span>
+    </div>
+    <table>
+      <tr>
+        <th>name</th>
+        <th>source</th>
+        <th class="center">cpu limit</th>
+        <th class="center">mem limit</th>
+        <th></th>
+      </tr>
+      {% for image in images %}
+      <tr>
+        <td>{{ image.name }}</td>
+        <td>{{ image.source }}</td>
+        <td class="center">
+          <span>{{ image.cpu_limit }}</span>
+        </td>
+        <td class="center">
+          <span>{{ image.mem_limit }}</span>
+        </td>    
+        <td class="options">
+          <span class="material-symbols-outlined edit" data-href="/admin/modal/image/{{ image.id }}">edit</span>
+          <span class="material-symbols-outlined delete" data-href="/admin/modal/image/{{ image.id }}">delete</span>
+        </td>        
+      </tr>
+      {% endfor %}
+    </table>
+  </div>  
+  <div id="admin-cubicles-container">
+    <div class="header">
+      <h2>Cubicles</h2>
+      <span class="material-symbols-outlined edit" title="Add cubicle" data-href="/admin/modal/cubicle">add_to_queue</span>
+    </div>
+    <table>
+      <tr>
+        <th>name</th>
+        <th>user</th>
+        <th>image</th>
+        <th>node</th>
+        <th>novnc port</th>
+        <th>network</th>
+        <th class="center">last activity</th>
+        <th></th>
+      </tr>
+      {% for cubicle in cubicles %}
+      <tr>
+        <td>{{ cubicle.name }}</td>
+        <td>{{ cubicle.user }}</td>
+        <td>{{ cubicle.image }}</td>
+        <td>{{ cubicle.node }}</td>
+        <td>{{ cubicle.novnc_port }}</td>
+        <td>{{ cubicle.network }}</td>
+        <td class="center">{{ cubicle.last_activity }}</td>
+        <td class="options">
+          <span class="material-symbols-outlined edit" title="Edit cubicle" data-href="/admin/modal/cubicle/{{ cubicle.id }}">edit</span>
+          <span class="material-symbols-outlined" title="Record keyboard">keyboard</span>
+          <span class="material-symbols-outlined" title="Record screen">videocam</span>
+          <span class="material-symbols-outlined" title="Take a screenshot">photo_camera</span>
+          <span class="material-symbols-outlined delete" title="Delete cubicle" data-href="/admin/modal/cubicle/{{ cubicle.id }}">delete</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>    
+  </div>
+</div>
+<div id="disclaimer">
+  <span>Content based on <a href="https://github.com/divisora">github.com/divisora</a> used under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPLv3</a> license</span>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+  $(document).ready(function() {
+    // Load and open the modal with information from the data-href attribute
+    $('.edit').on('click', function() {
+      var url = $(this).attr('data-href');
+      var modal = $('#modal');
+      modal.load(url);
+      modal.css({'display': 'flex'});
+    });
+    // Delete the object related to the data-href attribute
+    // Show the returned result for 3 sec.
+    $('.delete').on('click', function() {
+      var url = $(this).attr('data-href');
+      $.ajax({
+        url: url,
+        type: 'DELETE',
+        success: function(result) {
+            $('#status').html(result);
+        }
+      });
+      $('#status').css({'display': 'flex'});
+      status = setTimeout(function() {
+        $('#status').css({'display': ''});
+      }, 3000);      
+    })
+
+    // Close the modal if the user click the 'X' icon
+    $(document).on('click', '#modal-close', function() {
+      $('#modal').css({'display': ''});
+      $('#modal').html('');
+    });
+
+    // Close the modal if the user click outside the modal-box
+    $(document).on('click', '#modal', function(e) {
+      if (e.target !== this) {
+        return;
+      }
+      $('#modal').css({'display': ''});
+      $('#modal').html('');
+    });
+
+    // Submit and display the returned result. Close it after 3 sec.
+    $(document).on('submit', '#form-modal', function(event) {
+      var url = event.currentTarget.action;
+      var data = $('form#form-modal').serialize();
+      $.post(url, data, function(event) {
+        $('#status').html(event);
+      });
+
+      $('#status').css({'display': 'flex'});
+      status = setTimeout(function() {
+        $('#status').css({'display': ''});
+      }, 3000);
+      event.preventDefault();
+    });
+  });
+</script>
+{% endblock %}

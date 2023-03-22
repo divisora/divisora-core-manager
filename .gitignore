@@ -1,0 +1,12 @@
+# Ignore env
+env/
+
+# Ignore pycache
+__pycache__/
+*.pyc
+
+# Ignore egg-info
+*.egg-info/
+
+# Ignore git
+.git

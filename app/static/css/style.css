@@ -1,0 +1,337 @@
+* {
+  margin: 0px;
+  padding: 0px;
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100svh;
+
+  background: linear-gradient(#141e30, #243b55);
+  /*
+  background: url('/static/pics/lake.jpeg') top right no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  */
+}
+
+a:link, 
+a:visited,
+a:hover,
+a:active {
+  color: inherit;
+  text-decoration: none;
+}
+
+#box {
+  display: flex;
+  flex-direction: row;
+  min-height: 250px;
+  box-shadow: 2px 2px 7px rgba(0, 0, 0, 0.6);
+}
+
+div#error-container {
+  /* width: 500px; */
+  height: inherit;
+  padding: 15px;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+  text-align: center;
+}
+
+div#error-container > div {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+div#error-container > div > div {
+  display: flex;
+  flex-direction: column;
+}
+
+div#error-container > div > *:last-child {
+  font-style: italic;
+  font-size: 0.9em;
+}
+
+div#health-status {
+  position: absolute;
+  bottom: 0px;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding: 10px 20px;
+  color: #ffffff;
+}
+
+div#health-status > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+div#health-status > div > h2 {
+  font-size: 1.1em;
+}
+
+div#health-status .health-error {
+  color: red;
+}
+
+div#login-container {
+  width: 300px;
+  height: inherit;
+  padding: 15px;
+  color: #ffffff;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-top-left-radius: inherit;
+  border-bottom-left-radius: inherit;
+}
+
+div#login-container h2 {
+  text-transform: uppercase;
+  font-weight: 500;
+  margin: 15px;
+  width: 100%;
+}
+
+div#login-container > form > *:first-child {
+  text-align: center;
+}
+
+div#login-container > form > *:not(:first-child) {
+  margin: 0px 10px 15px 10px;
+}
+
+div#login-container div.login-msg {
+  margin: 8px 0px 8px 0px;
+  color: #df3b3b;
+  text-align: left;
+}
+
+div#login-container > * {
+  width: calc(100% - 20px);
+}
+
+div#login-container > div:first-child {
+  margin: 0px 0px 8px 0px;
+}
+
+div#login-container input[type=text],
+div#login-container input[type=password] {
+  color: inherit;
+  border: 0px;
+  width: 100%;
+  font-size: 0.8em;
+  background: none;
+  padding: 10px 0px;
+  outline: none;
+  border-bottom: 1px solid #ffffff;
+}
+
+div#login-container button {
+  width: 100%;
+  height: 45px;
+  background-color: #20334a;
+  color: #ffffff;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  transition: 0.5s;
+}
+
+div#login-container button:hover {
+  background-color: #c2c9d6;
+  color: #20334a;
+}
+
+div#login-container #login-options {
+  display: flex;
+  justify-content: space-evenly;
+  width: 100%;
+}
+
+div#login-container #login-options > div {
+  display: flex;
+  align-items: center;
+}
+
+
+div#login-container #login-options label {
+  padding: 0px 5px;
+  margin: 0px;
+}
+
+
+div#info-container {
+  width: 500px;
+  height: inherit;
+  background-color: #b2bec3;
+  border-top-right-radius: inherit;
+  border-bottom-right-radius: inherit;  
+  background: url('/static/pics/docker.png') top right no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+div.alert {
+  position: absolute;
+  top: 0;
+  margin: 5px;
+  width: 30vw;
+  color: #ffffff;
+  background-color: #cf414e;
+  border: 1px solid #ad0012;
+  padding: 10px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.close {
+  font-weight: bold;
+  font-size: 22px;
+  line-height: 20px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.close:hover {
+  color: #c5c5c5;
+}
+
+div#disclaimer {
+  padding: 7px;
+  color: #b5b5b5;
+  font-size: 0.9em;
+}
+
+
+div#admin-box {
+  display: grid;
+  grid-template-columns: 400px 400px 600px;
+  grid-template-rows: auto;
+  grid-template-areas: 
+    "users nodes images"
+    "cubicles cubicles cubicles";
+  color: #ffffff;
+  gap: 10px;
+  width: 1400px;
+}
+div#admin-users-container {
+  grid-area: users;
+}
+
+div#admin-nodes-container {
+  grid-area: nodes;
+}
+
+div#admin-images-container {
+  grid-area: images;
+}
+
+div#admin-cubicles-container {
+  grid-area: cubicles;
+}
+
+div#admin-users-container,
+div#admin-nodes-container,
+div#admin-images-container,
+div#admin-cubicles-container {
+  display: flex;
+  flex-direction: column;
+  height: inherit;
+  padding: 15px;
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.6);
+  box-shadow: 2px 2px 7px rgb(0 0 0 / 60%);
+  font-size: 0.9em;
+}
+
+div#admin-box > div > .header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #ffffff;
+  margin: 0px 3px;
+  margin-bottom: 10px;
+}
+
+div#admin-box > div > .header > .material-icons,
+div#admin-box > div > .header > .material-symbols-outlined {
+  font-size: 20px;
+}
+
+table, th, td {
+  border: 0px;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 3px 5px;
+}
+
+div#admin-box > div > table > * > tr:nth-child(even) {
+  background-color: #2d394d;
+}
+
+td.options {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+th.center,
+td.center {
+  text-align: center
+}
+
+td > .material-icons,
+td > .material-symbols-outlined {
+  display: block;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.edit {
+  cursor: pointer;
+}
+
+.status-ok {
+  color: #28a43d;
+}
+
+#status {
+  display: none;
+  flex-direction: row;
+  justify-content: center;
+  position: absolute;
+  top: 0px;
+  width: 100vw;
+  z-index: 2;
+}
+
+#status > div {
+  padding: 10px;
+  color: white;
+}
+
+#status > div.ok {
+  background-color: #28a43d;
+  border: 1px solid #3aff5c;
+}
+
+#status > div.error {
+  background-color: #a50606;
+  border: 1px solid #470404;
+}
