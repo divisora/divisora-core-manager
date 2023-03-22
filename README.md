@@ -1,18 +1,23 @@
 ## Divisora: Private, Automatic and Dynamic portal to other security zones
 ### Description
-Divisora project is an attemt to build a secure and open source portal for users/administrators who want to access different security zones. Instead of relying on each protocol being secure, this project aims to minimize the security impact of opening access without loosing control by only exposing a portal through HTTPS / noVNC.
+T.B.D
 
-At this point this project should be considered a Proof-of-Concept rather than a stable release. Please feel free to contribute with comments / review / code updates through Issues / Pull-requests.
-
-## Build / Run
+### Build / Run
 ```
 podman build -t divisora/core-manager .
 podman network create --subnet 192.168.66.0/24 --gateway 192.168.66.1 divisora_front
 podman run --name divisora_core-manager --network divisora_front  --network-alias=core-manager -d divisora/core-manager:latest
 ```
 
-## Develope
-### Windows
+### Default values
+```
+(Will be replaced with random and a OTP system later on)
+user1 / test  Image: openbox-latest
+user2 / test  Image: openbox-1.0
+```
+
+### Develope
+#### Windows
 ```
 python -m venv env
 .\env\Scripts\activate
@@ -30,7 +35,7 @@ flask run
 #pip3 freeze > requirements.txt
 pip-compile --resolver=backtracking pyproject.toml
 ```
-### Linux
+#### Linux
 ```
 sudo apt-get install python3 python3-venv
 
@@ -52,7 +57,7 @@ flask run
 pip-compile --resolver=backtracking pyproject.toml
 ```
 
-### Redis (not used yet)
+#### Redis (not used yet)
 ```
 celery -A run worker --loglevel INFO
 
