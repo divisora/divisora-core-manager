@@ -13,6 +13,7 @@ from app.models.cubicle import Cubicle
 import re
 
 from app.extensions import db
+from app.models.network import generate_networks
 
 from ipaddress import ip_network, ip_address
 
@@ -183,6 +184,39 @@ def modal_add(type):
             if image_name:
                 user.add_cubicle(image_name)
 
+            return_msg = "User {} added!".format(name)
+
+        case 'node':
+            node = obj()
+            name = request.form.get('name')
+            if not name:
+                return _modal_status_message('error', 'Name is missing')
+            if not re.search('^[a-zA-Z0-9\_\-]+$', name):
+                return _modal_status_message('error', 'Name includes bad characters')
+            node.name = name
+
+            ip = request.form.get('ip_address')
+            try:
+                ip_address(ip)
+            except:
+                return _modal_status_message('error', 'IP address is in a bad format')
+            else:
+                node.ip_address = ip
+
+            network_range = request.form.get('network_range')
+            try:
+                ip_network(network_range)
+            except:
+                return _modal_status_message('error', 'Network range is in a bad format')
+            else:
+                node.network_range = network_range
+                generate_networks(node, network_range)
+
+            db.session.add(node)
+            db.session.commit()
+
+            return_msg = "Node {} added!".format(name)
+
         case 'image':
             image = obj()
             name = request.form.get('name')
@@ -339,6 +373,9 @@ def modal_update_id(type, id):
                 cubicle = Cubicle.query.filter_by(name=cubicle_name).first()
                 user.cubicles.append(cubicle)
             db.session.commit()
+
+            return_msg = "User {} updated!".format(name)
+
         case 'node':
             node = obj.query.filter_by(id=id).first()
             if not node:
@@ -366,10 +403,12 @@ def modal_update_id(type, id):
                 return _modal_status_message('error', 'Network range is in a bad format')
             else:
                 node.network_range = network_range
+                # TODO: Delete old networks if the range is changed
+                generate_networks(node, network_range)
 
             db.session.commit()
 
-            return_msg = "Image {} updated!".format(name)
+            return_msg = "Node {} updated!".format(name)
 
         case 'image':
             image = obj.query.filter_by(id=id).first()

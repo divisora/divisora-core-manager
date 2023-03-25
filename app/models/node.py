@@ -69,9 +69,9 @@ def setup(session):
         n.ip_address = node["ip"]
         n.network_range = node["range"]
 
-        generate_networks(n, node["range"])
-
         session.add(n)
         session.commit()
+
+        generate_networks(n, node["range"])
 
     session.commit()
