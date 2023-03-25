@@ -224,7 +224,6 @@ div#admin-box {
     "cubicles cubicles cubicles";
   color: #ffffff;
   gap: 10px;
-  width: 1400px;
 }
 div#admin-users-container {
   grid-area: users;
