@@ -21,7 +21,8 @@ class Network(db.Model):
 def generate_networks(node, network, prefix=26):
     for subnet in list(ip_network(network).subnets(new_prefix=prefix)):
         n = Network()
-        n.name = "Network_{}_{}".format(node.name, str(subnet).replace(".", "_").replace("/", "_"))
+        #n.name = "{}_{}".format(node.name, str(subnet).replace(".", "_").replace("/", "_"))
+        n.name = "{}_{}".format(node.name, str(subnet).replace("/", "_"))
         n.ip_range = str(subnet)
         node.networks.append(n)
     db.session.commit()

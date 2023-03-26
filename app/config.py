@@ -8,6 +8,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 from datetime import timedelta
 
+MIN_USERNAME_LENGTH = 2
+MIN_PASSWORD_LENGTH = 5
+CPU_LIMIT = 10
+
 class Config(object):
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex()
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or 'sqlite:///' + os.path.join(basedir, 'app.db')

@@ -3,7 +3,7 @@
 
 from flask import Blueprint, request
 from flask import render_template
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from app.models.user import User
 from app.models.node import Node
@@ -12,15 +12,30 @@ from app.models.cubicle import Cubicle
 
 import re
 
-from app.extensions import db
+from app.config import MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH, CPU_LIMIT
+from app.extensions import db, login_manager
 from app.models.network import generate_networks
 
 from ipaddress import ip_network, ip_address
+from functools import wraps
 
 admin = Blueprint('admin', __name__, template_folder='templates')
 
+def admin_required(func):
+    @wraps(func)
+    def inner(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return login_manager.unauthorized()
+        print("Check if {} admin".format(current_user.name))
+        if not current_user.admin:
+            # TODO: Maybe not redirect to login-view?
+            return login_manager.unauthorized()
+        return func(*args, **kwargs)
+    return inner
+
 @admin.route('/admin')
-#@login_required
+@login_required
+@admin_required
 def main():
     # Get information about users
     users = []
@@ -141,30 +156,22 @@ def modal_add(type):
     match type:
         case 'user':
             user = obj()
-            # Get username, check if it exist, sanitiy check the string and then add it to user.
-            username = request.form.get('username')
-            if not username:
-                return _modal_status_message('error', 'Username is missing')
-            if not re.search("^[a-zA-Z0-9_-]+$", username):
-                return _modal_status_message('error', 'Username includes bad characters')
-            if obj.query.filter_by(username=username).first():
-                return _modal_status_message('error', 'Username is already in use')
+
+            success, error_msg, full_name = _normalize_full_name(request.form.get('full_name'))
+            if not success:
+                return error_msg
+            user.name = full_name
+
+            success, error_msg, username = _normalize_username(request.form.get('username'))
+            if not success:
+                return error_msg
             user.username = username
 
-            # Get full name, sanitiy check the string and then add it to user
-            name = request.form.get('full_name')
-            if not name:
-                return _modal_status_message('error', 'Full name is missing')
-            if not re.search("^[a-zA-Z0-9\s]+$", name):
-                return _modal_status_message('error', 'Full name includes bad characters')
-            user.name = name
-
-            # Get password and then add it to user
-            password = request.form.get('new_password')
-            if not password:
-                return _modal_status_message('error', 'Password is missing')
-            if not re.search("^[a-zA-Z0-9\s]+$", name):
-                return _modal_status_message('error', 'Password contains forbidded characters')
+            success, error_msg, password = _normalize_password(request.form.get('new_password'))
+            if not success:
+                return error_msg
+            if password != request.form.get('new_password_confirm'):
+                return _modal_status_message('error', 'Passwords does not match')
             user.password = password
 
             for node in Node.query.all():
@@ -184,21 +191,20 @@ def modal_add(type):
             if image_name:
                 user.add_cubicle(image_name)
 
-            return_msg = "User {} added!".format(name)
+            return_msg = "User {} added!".format(full_name)
 
         case 'node':
             node = obj()
-            name = request.form.get('name')
-            if not name:
-                return _modal_status_message('error', 'Name is missing')
-            if not re.search('^[a-zA-Z0-9\_\-]+$', name):
-                return _modal_status_message('error', 'Name includes bad characters')
+
+            success, error_msg, name = _normalize_object_name(request.form.get('name'))
+            if not success:
+                return error_msg
             node.name = name
 
             ip = request.form.get('ip_address')
             try:
                 ip_address(ip)
-            except:
+            except ValueError:
                 return _modal_status_message('error', 'IP address is in a bad format')
             else:
                 node.ip_address = ip
@@ -206,7 +212,7 @@ def modal_add(type):
             network_range = request.form.get('network_range')
             try:
                 ip_network(network_range)
-            except:
+            except ValueError:
                 return _modal_status_message('error', 'Network range is in a bad format')
             else:
                 node.network_range = network_range
@@ -219,34 +225,25 @@ def modal_add(type):
 
         case 'image':
             image = obj()
-            name = request.form.get('name')
-            if not name:
-                return _modal_status_message('error', 'Name is missing')
-            if not re.search('^[a-zA-Z0-9\_\-\.]+$', name):
-                return _modal_status_message('error', 'Name includes bad characters')
+
+            success, error_msg, name = _normalize_object_name(request.form.get('name'))
+            if not success:
+                return error_msg            
             image.name = name
             
-            source = request.form.get('source')
-            if not source:
-                return _modal_status_message('error', 'Source is missing')
-            if not re.search('^[a-zA-Z0-9\_\-\/\:\.]+$', source):
-                return _modal_status_message('error', 'Source includes bad characters')
+            success, error_msg, source = _normalize_source_name(request.form.get('source'))
+            if not success:
+                return error_msg
             image.image = source
 
-            cpu_limit = request.form.get('cpu-limit')
-            if not cpu_limit:
-                return _modal_status_message('error', 'CPU-limit is missing')
-            if not re.search('^[0-9]+$', cpu_limit):
-                return _modal_status_message('error', 'CPU-limit includes bad characters')
-            if int(cpu_limit) > 10:
-                return _modal_status_message('error', 'CPU-limit is to high. Use 0 for unlimited')
+            success, error_msg, cpu_limit = _normalize_cpu_limit(request.form.get('cpu-limit'))
+            if not success:
+                return error_msg            
             image.cpu_limit = cpu_limit
 
-            mem_limit = request.form.get('mem-limit')
-            if not mem_limit:
-                return _modal_status_message('error', 'Mem-limit is missing')
-            if not re.search('^[0-9]+(b|k|m|g)$', mem_limit):
-                return _modal_status_message('error', 'Mem-limit got bad format')
+            success, error_msg, mem_limit = _normalize_mem_limit(request.form.get('mem-limit'))
+            if not success:
+                return error_msg            
             image.mem_limit = mem_limit
 
             db.session.add(image)
@@ -341,29 +338,27 @@ def modal_update_id(type, id):
     match type:
         case 'user':
             user = obj.query.filter_by(id=id).first()
-            if not user:
-                return "Unknown user"
 
-            # Get full name, sanitiy check the string and then add it to obj
-            name = request.form.get('full_name')
-            if not name:
-                return "Full name is missing"
-            if not re.search("^[a-zA-Z0-9\s]+$", name):
-                return "Full name includes bad characters"
-            user.name = name
+            if not user:
+                return _modal_status_message('error', 'Unknown user')
+
+            if user.username != request.form.get('username'):
+                return _modal_status_message('error', 'ID and username does not match')
+
+            success, error_msg, full_name = _normalize_full_name(request.form.get('full_name'))
+            if not success:
+                return error_msg
+            user.name = full_name
 
             # Verify old password
             current_password = request.form.get('current_password')
             if current_password:
                 # TODO: ignore this check if you are superadmin?
-                if user.check_password(password) == False:
-                    return "Current password is wrong"
-                # Get password and then add it to obj
-                password = request.form.get('new_password')
-                if not password:
-                    return "Password is missing"
-                if not re.search("^[a-zA-Z0-9\s]+$", name):
-                    return "Password contains forbidded characters"
+                success, error_msg, password = _normalize_password(request.form.get('new_password'))
+                if not success:
+                    return error_msg
+                if password != request.form.get('new_password_confirm'):
+                    return _modal_status_message('error', 'Passwords does not match')
                 user.password = password
 
             # Add cubicle
@@ -378,20 +373,19 @@ def modal_update_id(type, id):
 
         case 'node':
             node = obj.query.filter_by(id=id).first()
+
             if not node:
                 return _modal_status_message('error', 'Unknown node')
             
-            name = request.form.get('name')
-            if not name:
-                return _modal_status_message('error', 'Name is missing')
-            if not re.search('^[a-zA-Z0-9\_\-]+$', name):
-                return _modal_status_message('error', 'Name includes bad characters')
+            success, error_msg, name = _normalize_object_name(request.form.get('name'))
+            if not success:
+                return error_msg
             node.name = name
 
             ip = request.form.get('ip_address')
             try:
                 ip_address(ip)
-            except:
+            except ValueError:
                 return _modal_status_message('error', 'IP address is in a bad format')
             else:
                 node.ip_address = ip
@@ -399,7 +393,7 @@ def modal_update_id(type, id):
             network_range = request.form.get('network_range')
             try:
                 ip_network(network_range)
-            except:
+            except ValueError:
                 return _modal_status_message('error', 'Network range is in a bad format')
             else:
                 node.network_range = network_range
@@ -412,37 +406,28 @@ def modal_update_id(type, id):
 
         case 'image':
             image = obj.query.filter_by(id=id).first()
+
             if not image:
                 return _modal_status_message('error', 'Unknown image')
             
-            name = request.form.get('name')
-            if not name:
-                return _modal_status_message('error', 'Name is missing')
-            if not re.search('^[a-zA-Z0-9\_\-\.]+$', name):
-                return _modal_status_message('error', 'Name includes bad characters')
+            success, error_msg, name = _normalize_object_name(request.form.get('name'))
+            if not success:
+                return error_msg            
             image.name = name
             
-            source = request.form.get('source')
-            if not source:
-                return _modal_status_message('error', 'Source is missing')
-            if not re.search('^[a-zA-Z0-9\_\-\/\:\.]+$', source):
-                return _modal_status_message('error', 'Source includes bad characters')
+            success, error_msg, source = _normalize_source_name(request.form.get('source'))
+            if not success:
+                return error_msg
             image.image = source
 
-            cpu_limit = request.form.get('cpu-limit')
-            if not cpu_limit:
-                return _modal_status_message('error', 'CPU-limit is missing')
-            if not re.search('^[0-9]+$', cpu_limit):
-                return _modal_status_message('error', 'CPU-limit includes bad characters')
-            if int(cpu_limit) > 10:
-                return _modal_status_message('error', 'CPU-limit is to high. Use 0 for unlimited')
+            success, error_msg, cpu_limit = _normalize_cpu_limit(request.form.get('cpu-limit'))
+            if not success:
+                return error_msg            
             image.cpu_limit = cpu_limit
 
-            mem_limit = request.form.get('mem-limit')
-            if not mem_limit:
-                return _modal_status_message('error', 'Mem-limit is missing')
-            if not re.search('^[0-9]+(b|k|m|g)$', mem_limit):
-                return _modal_status_message('error', 'Mem-limit got bad format')
+            success, error_msg, mem_limit = _normalize_mem_limit(request.form.get('mem-limit'))
+            if not success:
+                return error_msg            
             image.mem_limit = mem_limit
 
             db.session.commit()
@@ -454,11 +439,118 @@ def modal_update_id(type, id):
 
     return _modal_status_message('ok', return_msg)
 
+@admin.route('/admin/modal/<type>/<id>', methods=['DELETE'])
+def modal_delete_id(type, id):
+    try:
+        type, id = _normalize_input_variables(type, id)    
+    except Exception:
+        return render_template('admin/modal/error.html')
+            
+    obj = _get_type(type)
+
+    if not obj:
+        return "Could not delete {}:{}".format(type, id)
+    
+    db.session.delete(obj.query.filter_by(id=id).first())
+    db.session.commit()
+    
+    return_msg = "Deleted {}:{}".format(type, id)
+
+    return _modal_status_message('ok', return_msg)
+
 def _modal_status_message(status, text):
     return render_template('admin/modal/status.html', info={
         'status': status,
         'text': text,
     })
+
+# Normalization
+# Returns a tuple where first part is the 'error-code'
+# False = Could not normalize / Did not pass tests
+# True = Everything is fine
+# (error-code, error-msg, normalized-value)
+def _normalize_source_name(name):
+    if not name:
+        return (False, _modal_status_message('error', 'Source name is missing'), '')
+    # Format check. Example format:
+    #   example/image-example:latest
+    #   example/image-example:1.0
+    if not re.search('^[a-zA-Z0-9]+/[a-zA-Z0-9\_\-]+:[a-zA-Z0-9\.]+$', name):
+        return (False, _modal_status_message('error', 'Source name got bad format or includes forbidden characters'), '')
+    return (True, '', name)
+
+# Check for forbidden characters, limit the input to two names and finaly capitalize the names if needed.
+def _normalize_full_name(full_name):
+    if not full_name:
+        return (False, _modal_status_message('error', 'Full name is missing'), '')
+
+    names = full_name.split(" ")
+    # Limit the name to only contain two names with space in between.
+    if len(names) != 2:
+        return (False, _modal_status_message('error', 'Full name must only include First- and Last-name'), '')
+
+    # Loop the unique names, check for forbidden characters and then capitalize it.
+    for i, name in enumerate(names):
+        if not re.search('^[a-zA-Z0-9]+$', name):
+            return (False, _modal_status_message('error', 'Full name includes forbidden characters'), '')
+        names[i] = name.capitalize()
+
+    return (True, '', ' '.join(names))
+
+# Check for forbidden characters and collision with other usernames
+def _normalize_username(username):
+    if not username:
+        return (False, _modal_status_message('error', 'Username is missing'), '')
+    
+    if len(username) < MIN_USERNAME_LENGTH:
+        return (False, _modal_status_message('error', 'Username is too short'), '')
+    
+    if not re.search('^[a-zA-Z0-9_-]+$', username):
+        return (False, _modal_status_message('error', 'Username includes forbidden characters'), '')
+    
+    if User.query.filter_by(username=username).first():
+        return (False, _modal_status_message('error', 'Username is already in use'), '')
+    
+    return (True, '', username)
+
+# Check for forbidden characters
+def _normalize_object_name(name):
+    if not name:
+        return (False, _modal_status_message('error', 'Name is missing'), '')
+    if not re.search('^[a-zA-Z0-9\_\-\.]+$', name):
+        return (False, _modal_status_message('error', 'Name includes forbidden characters'), '')
+    return (True, '', name)
+
+# Check for length and forbidden characters
+def _normalize_password(password):
+    if not password:
+        return (False, _modal_status_message('error', 'Password is missing'), '')
+    
+    # Inherit length from config.py
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return (False, _modal_status_message('error', 'Password is too short'), '')
+    
+    if not re.search('^[a-zA-Z0-9\s]+$', password):
+        return (False, _modal_status_message('error', 'Password includes forbidden characters'), '')
+    
+    return (True, '', password)
+
+def _normalize_cpu_limit(cpu_limit):
+    if not cpu_limit:
+        return (False, _modal_status_message('error', 'CPU-limit is missing'), '')
+    if not re.search('^[0-9]+$', cpu_limit):
+        return (False, _modal_status_message('error', 'CPU-limit includes forbidden characters'), '')
+    if int(cpu_limit) < 0 or int(cpu_limit) > CPU_LIMIT:
+        return (False, _modal_status_message('error', 'CPU-limit is to high. Use 0 for unlimited'), '')
+    return (True, '', cpu_limit)
+
+def _normalize_mem_limit(mem_limit):
+    if not mem_limit:
+        return (False, _modal_status_message('error', 'Mem-limit is missing'), '')
+    if not re.search('^[0-9]+(b|k|m|g)$', mem_limit):
+        return (False, _modal_status_message('error', 'Mem-limit got bad format'), '')
+    # TODO: Check if a higher limit is reached?
+    return (True, '', mem_limit)
 
 def _normalize_input_variables(type, id):
     try:
@@ -486,20 +578,3 @@ def _get_type(type):
         return None
     
     return type_list[type]
-
-@admin.route('/admin/modal/<type>/<id>', methods=['DELETE'])
-def modal_delete_id(type, id):
-    try:
-        type, id = _normalize_input_variables(type, id)    
-    except Exception:
-        return render_template('admin/modal/error.html')
-            
-    obj = _get_type(type)
-
-    if not obj:
-        return "Could not delete {}:{}".format(type, id)
-    
-    db.session.delete(obj.query.filter_by(id=id).first())
-    db.session.commit()
-
-    return "Deleted {}:{}".format(type, id)

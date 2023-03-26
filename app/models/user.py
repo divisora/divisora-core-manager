@@ -128,7 +128,7 @@ def setup(session):
                 u.networks.append(network)
             session.add(u)
             session.commit()
-            #u.add_cubicle(user["image"])
+            u.add_cubicle(user["image"])
 
     except Exception as e:
         print(e)
