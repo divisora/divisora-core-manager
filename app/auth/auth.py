@@ -7,6 +7,7 @@ from flask import make_response
 from flask_login import login_user, logout_user, login_required, current_user
 
 from datetime import datetime
+import time
 
 from app.extensions import db
 
@@ -25,13 +26,41 @@ def load_user(user_id):
         return User.query.get(user_id)
     return None
 
-#@auth.before_request
-#def update_last_activity():
-#    if not current_user.is_authenticated:
-#        return
-#    user = User.query.filter_by(id=current_user.id).first()
-#    user.last_activity = datetime.utcnow()
-#    db.session.commit()
+@auth.before_request
+def update_last_activity():
+     if not current_user.is_authenticated:
+         return
+     user = User.query.filter_by(id=current_user.id).first()
+     user.last_activity = datetime.utcnow()
+     db.session.commit()
+
+@auth.route('/keepalive')
+@login_required
+def keep_alive():
+    now = time.time_ns() / 1000000 # Nano: 10^-9 ; Milli: 10^-3
+    req_time = 0.0
+    if 't' in request.args:
+        req_time = request.args.get('t')
+    else:
+        url = urlparse(request.headers.get("Origin"))
+        query = parse_qs(url.query)
+        if 't' in query:
+            req_time = query['t']
+    try:
+        if not isinstance(req_time, float):
+            req_time = float(req_time)
+    except Exception:
+        raise Exception("t-argument could not be converted to correct type")       
+    
+    if req_time <= 0.0:
+        print("Could not parse time from client")
+        return ""
+
+    try:
+        print("One-way delay: {}ms".format(now - req_time))
+    except Exception:
+        print("t-value could not be parsed as Unix-time")
+    return ""
 
 @auth.route('/login', methods=['GET'])
 def login():
@@ -120,13 +149,11 @@ def authenticate():
     target = request.headers.get('X-Auth-Request-Redirect')
     path = (urlparse(target).path).split('/')
 
-    if len(path) < 2:
+    if path[1] == 'admin' or path[1] == 'api':
         pass
-    elif path[1] == '' or path[1] == 'websockify' or path[1] == 'app':
+    else:
         resp.headers['X-URL'] = current_user.get_upstream_novnc()
-    elif path[1] == 'admin':
-        pass
 
-    print("Redirecting user to: {}\n".format(resp.headers['X-URL']))
+    #print("Redirecting user to: {}\n".format(resp.headers['X-URL']))
 
     return resp

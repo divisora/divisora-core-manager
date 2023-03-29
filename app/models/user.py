@@ -7,7 +7,9 @@ from flask_login import UserMixin
 
 from sqlalchemy_utils import PasswordType
 from sqlalchemy_utils import force_auto_coercion
-from sqlalchemy.sql import func
+#from sqlalchemy.sql import func
+
+from datetime import datetime, timedelta
 
 from app.models.cubicle import Cubicle
 from app.models.node import Node
@@ -27,7 +29,7 @@ class User(UserMixin, db.Model):
         ],
     ))
     admin = db.Column(db.Boolean, default=False, nullable=False)
-    last_activity = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    last_activity = db.Column(db.DateTime(timezone=True))
     cubicles = db.relationship("Cubicle", backref="user", lazy="joined")
     networks = db.relationship("Network", backref="user", lazy="joined")
 
@@ -120,6 +122,7 @@ def setup(session):
             u.username = user["username"]
             u.password = user["password"]
             u.admin = user["admin"]
+            u.last_activity = datetime.utcnow() - timedelta(days=1)
             for node in Node.query.all():
                 network = node.assign_network()
                 if network == None:

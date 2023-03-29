@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 from flask import Blueprint, request
+from flask_login import login_required
+
+from datetime import datetime, timedelta
 
 from app.models.network import Network
 from app.models.cubicle import Cubicle
 from app.models.node import Node
-
-from flask_login import login_required
 
 from app.extensions import db
 
@@ -26,6 +27,11 @@ def api_cubicle():
 
     # Only return values for those cubicles who have a active owner.
     for cubicle in Cubicle.query.filter(Cubicle.user_id != None).all():
+        # Ignore cubicles where the user have been idle for more than 1 hour
+        # TODO: Set this variable (hours=1) somewhere else.
+        if cubicle.user.last_activity < datetime.utcnow() - timedelta(hours=1):
+            continue
+
         network = None
         for n in cubicle.user.networks:
             if n.node.id != cubicle.node.id:

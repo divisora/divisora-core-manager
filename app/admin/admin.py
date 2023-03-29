@@ -5,19 +5,19 @@ from flask import Blueprint, request
 from flask import render_template
 from flask_login import login_required, current_user
 
+import re
+from ipaddress import ip_network, ip_address
+from functools import wraps
+from datetime import datetime
+
 from app.models.user import User
 from app.models.node import Node
 from app.models.image import Image
 from app.models.cubicle import Cubicle
 
-import re
-
 from app.config import MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH, CPU_LIMIT
 from app.extensions import db, login_manager
 from app.models.network import generate_networks
-
-from ipaddress import ip_network, ip_address
-from functools import wraps
 
 admin = Blueprint('admin', __name__, template_folder='templates')
 
@@ -26,12 +26,21 @@ def admin_required(func):
     def inner(*args, **kwargs):
         if not current_user.is_authenticated:
             return login_manager.unauthorized()
-        print("Check if {} admin".format(current_user.name))
+        print("Check if {} is an admin".format(current_user.name))
         if not current_user.admin:
             # TODO: Maybe not redirect to login-view?
             return login_manager.unauthorized()
         return func(*args, **kwargs)
     return inner
+
+@admin.before_request
+def update_last_activity():
+    if not current_user.is_authenticated:
+        return
+    user = User.query.filter_by(id=current_user.id).first()
+    user.last_activity = datetime.utcnow()
+    db.session.commit()
+
 
 @admin.route('/admin')
 @login_required
