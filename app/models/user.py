@@ -8,6 +8,7 @@ from flask_login import UserMixin
 from sqlalchemy_utils import PasswordType
 from sqlalchemy_utils import force_auto_coercion
 #from sqlalchemy.sql import func
+from sqlalchemy import and_
 
 from datetime import datetime, timedelta
 
@@ -37,28 +38,35 @@ class User(UserMixin, db.Model):
         return self.password == password
 
     def add_cubicle(self, image_name):
-        # TODO: This must be dynamic. Otherwise we are stuck with one and the same cubicle
-        image = Image.query.filter_by(name=image_name).first()
+        image = Image.query.filter_by(name=image_name).order_by(Image.id).first()
         if image == None:
             print("Something went wrong while searching for the image. Maybe missing?")
             return
 
         # Check if image is already used.
-        for cubicle in self.cubicles:
-            if image.id == cubicle.image_id:
-                return
+        # for cubicle in self.cubicles:
+        #     if image.id == cubicle.image_id:
+        #         return
 
         c = Cubicle()
         c.name = "{}-{}".format(image.name, self.username)
+        i = 1
+        while Cubicle.query.filter_by(name=c.name).first() is not None:
+            c.name = "{}-{}-duplicate-{}".format(image.name, self.username, i)
+            i += 1
         c.image_id = image.id
         c.node_id = (Node.query.get(1)).id # TODO: Do not assume id == 1. Query health and dynamic allocate cubicle to most fitted node. Or use sticky settings. 
-        c.novnc_port = (Node.query.get(c.node_id)).get_available_novnc_port()
         if c.node_id is None:
             print("Something went wrong with the networks/nodes")
             return
+        c.novnc_port = (Node.query.get(c.node_id)).get_available_novnc_port()
         self.cubicles.append(c)
-
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            db.session.rollback()
+        
         return True
 
     def remove_cubicle(self, id):
@@ -84,7 +92,7 @@ class User(UserMixin, db.Model):
             self.remove_cubicle(id)
 
     def get_upstream_novnc(self):
-        cubicle = Cubicle.query.filter(Cubicle.user_id == self.id).first()
+        cubicle = Cubicle.query.filter(and_(Cubicle.user_id == self.id, Cubicle.active == True)).order_by(Cubicle.id).first()
 
         if not cubicle.node:
             return ""
@@ -96,7 +104,8 @@ class User(UserMixin, db.Model):
             node.assign_network(self)
 
     def __repr__(self):
-        return f'<Name "{self.name}", Username "{self.username}", Password: "{self.password}">, Cubicle "{self.cubicles}"'
+        #return f'<Name "{self.name}", Username "{self.username}", Password: "{self.password}">, Cubicles "{\" \".join([c.name for c in self.cubicles])}"'
+        return '<Name "{}", Username "{}", Cubicles "{}">'.format(self.name, self.username, ", ".join([c.name for c in self.cubicles]))
 
 def setup(session):
     users = [

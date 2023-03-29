@@ -6,6 +6,8 @@ from flask import render_template, redirect, url_for, request, flash, session
 from flask import make_response
 from flask_login import login_user, logout_user, login_required, current_user
 
+from sqlalchemy import and_
+
 from datetime import datetime
 import time
 
@@ -13,6 +15,7 @@ from app.extensions import db
 
 from app.models.user import User
 from app.models.node import Node
+from app.models.cubicle import Cubicle
 
 from urllib.parse import urlparse, parse_qs, urlunparse, urlencode
 
@@ -93,8 +96,22 @@ def login_post():
         case 'vnc':
             # Add cubicle to the logged in user
             # TODO: make dynamic.
-            #user.add_cubicle('divisora/cubicle-openbox:latest')
-            user.add_cubicle('openbox-latest')
+            # user.add_cubicle('divisora/cubicle-openbox:latest')
+            # user.add_cubicle('openbox-latest')
+            print(user)
+            active_cubicle = Cubicle.query.filter(and_(Cubicle.user_id == user.id, Cubicle.active == True)).first()
+            if not active_cubicle:
+                # TODO: Let the user choose Cubicle instead of assigning the first one in the database
+                cubicle = Cubicle.query.filter(Cubicle.user_id == user.id).order_by(Cubicle.id).first()
+                cubicle.active = True
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                else:
+                    print("Activated cubicle {}".format(cubicle.name))
+            else:
+                print("Already have cubicle activated: {} - {}".format(active_cubicle.name, active_cubicle.active))
 
             # TODO: sanity check URL for 'next'
             referer = request.headers.get('Referer')
@@ -157,3 +174,4 @@ def authenticate():
     #print("Redirecting user to: {}\n".format(resp.headers['X-URL']))
 
     return resp
+

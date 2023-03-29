@@ -10,11 +10,15 @@ class Cubicle(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128))
+    active = db.Column(db.Boolean, default=False, nullable=False)
     novnc_port = db.Column(db.Integer)
     image_id = db.Column(db.Integer, db.ForeignKey("image.id"))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     node_id = db.Column(db.Integer, db.ForeignKey("node.id"))
 
+    __table_args__ = (
+        db.UniqueConstraint(name),
+    )
     def __repr__(self):
         return f'<Name "{self.name}", Image "{self.image}", Node "{self.node_id}">'
 
