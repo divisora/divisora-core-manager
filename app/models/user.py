@@ -34,6 +34,10 @@ class User(UserMixin, db.Model):
     cubicles = db.relationship("Cubicle", backref="user", lazy="joined")
     networks = db.relationship("Network", backref="user", lazy="joined")
 
+    __table_args__ = (
+        db.UniqueConstraint(username),
+    )
+
     def check_password(self, password):
         return self.password == password
 
@@ -79,7 +83,12 @@ class User(UserMixin, db.Model):
             return
 
         self.cubicles.remove(cubicle)
-        db.session.commit()
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            print(e)
+            db.session.rollback()
 
     def remove_cubicles(self):
         cubicle_ids = []
@@ -94,7 +103,7 @@ class User(UserMixin, db.Model):
     def get_upstream_novnc(self):
         cubicle = Cubicle.query.filter(and_(Cubicle.user_id == self.id, Cubicle.active == True)).order_by(Cubicle.id).first()
 
-        if not cubicle.node:
+        if not cubicle or not cubicle.node:
             return ""
 
         return "{}:{}".format(str(cubicle.node.ip_address), cubicle.novnc_port)

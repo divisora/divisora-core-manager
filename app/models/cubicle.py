@@ -20,7 +20,7 @@ class Cubicle(db.Model):
         db.UniqueConstraint(name),
     )
     def __repr__(self):
-        return f'<Name "{self.name}", Image "{self.image}", Node "{self.node_id}">'
+        return f'<Name "{self.name}", Image "{self.image}", Node "{self.node_id}", Active "{self.active}">'
 
 def setup(session):
     cubicles = [

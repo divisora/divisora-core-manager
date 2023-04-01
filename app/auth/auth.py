@@ -98,11 +98,15 @@ def login_post():
             # TODO: make dynamic.
             # user.add_cubicle('divisora/cubicle-openbox:latest')
             # user.add_cubicle('openbox-latest')
-            print(user)
+            #print(user)
             active_cubicle = Cubicle.query.filter(and_(Cubicle.user_id == user.id, Cubicle.active == True)).first()
+            print(active_cubicle)
             if not active_cubicle:
                 # TODO: Let the user choose Cubicle instead of assigning the first one in the database
                 cubicle = Cubicle.query.filter(Cubicle.user_id == user.id).order_by(Cubicle.id).first()
+                if not cubicle:
+                    print("Something really weird happened")
+                    return redirect(url_for('auth.login'))
                 cubicle.active = True
                 try:
                     db.session.commit()
@@ -147,7 +151,7 @@ def login_post():
 @login_required
 def logout():
     # Remove all cubicles
-    current_user.remove_cubicles()
+    #current_user.remove_cubicles()
 
     # Logout the user
     logout_user()

@@ -260,6 +260,36 @@ def modal_add(type):
 
             return_msg = "Image {} added!".format(name)
 
+        case 'cubicle':
+            cubicle = obj()
+
+            success, error_msg, name = _normalize_object_name(request.form.get('name'))
+            if not success:
+                return error_msg            
+            cubicle.name = name
+
+            user = User.query.filter_by(name=request.form.get('user')).first()
+            if not user:
+                return _modal_status_message('error', 'User could not be found')
+            cubicle.user_id = user.id
+
+            image = Image.query.filter_by(name=request.form.get('image')).first()
+            if not image:
+                return _modal_status_message('error', 'Image could not be found')
+            cubicle.image_id = image.id
+
+            node = Node.query.filter_by(name=request.form.get('node')).first()
+            if not node:
+                return _modal_status_message('error', 'Node could not be found')
+            cubicle.node_id = node.id
+
+            cubicle.novnc_port = node.get_available_novnc_port()
+
+            db.session.add(cubicle)
+            db.session.commit()
+
+            return_msg = "Cubicle {} added!".format(name)
+
         case _:
             return _modal_status_message('error', 'Unknown type')
 
@@ -349,7 +379,7 @@ def modal_update_id(type, id):
             user = obj.query.filter_by(id=id).first()
 
             if not user:
-                return _modal_status_message('error', 'Unknown user')
+                return _modal_status_message('error', 'Unknown user-id')
 
             if user.username != request.form.get('username'):
                 return _modal_status_message('error', 'ID and username does not match')
@@ -384,7 +414,7 @@ def modal_update_id(type, id):
             node = obj.query.filter_by(id=id).first()
 
             if not node:
-                return _modal_status_message('error', 'Unknown node')
+                return _modal_status_message('error', 'Unknown node-id')
             
             success, error_msg, name = _normalize_object_name(request.form.get('name'))
             if not success:
@@ -417,7 +447,7 @@ def modal_update_id(type, id):
             image = obj.query.filter_by(id=id).first()
 
             if not image:
-                return _modal_status_message('error', 'Unknown image')
+                return _modal_status_message('error', 'Unknown image-id')
             
             success, error_msg, name = _normalize_object_name(request.form.get('name'))
             if not success:
@@ -442,6 +472,38 @@ def modal_update_id(type, id):
             db.session.commit()
 
             return_msg = "Image {} updated!".format(name)
+
+        case 'cubicle':
+            cubicle = obj.query.filter_by(id=id).first()
+            
+            if not cubicle:
+                return _modal_status_message('error', 'Unknown cubicle-id')
+
+            success, error_msg, name = _normalize_object_name(request.form.get('name'))
+            if not success:
+                return error_msg            
+            cubicle.name = name
+
+            user = User.query.filter_by(name=request.form.get('user')).first()
+            if not user:
+                return _modal_status_message('error', 'User could not be found')
+            cubicle.user_id = user.id
+
+            image = Image.query.filter_by(name=request.form.get('image')).first()
+            if not image:
+                return _modal_status_message('error', 'Image could not be found')
+            cubicle.image_id = image.id
+
+            node = Node.query.filter_by(name=request.form.get('node')).first()
+            if not node:
+                return _modal_status_message('error', 'Node could not be found')
+            cubicle.node_id = node.id
+
+            cubicle.novnc_port = node.get_available_novnc_port()
+
+            db.session.commit()
+
+            return_msg = "Cubicle {} updated!".format(name)
 
         case _:
             return _modal_status_message('error', 'Unknown type')
