@@ -8,7 +8,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 
 from sqlalchemy import and_
 
-from datetime import datetime
+from datetime import datetime, timedelta
+
 import time
 
 from app.extensions import db
@@ -155,6 +156,21 @@ def logout():
 
     # Logout the user
     logout_user()
+
+    # 'reset' timer by lowering it be 1 hour.
+    # TODO: Probably want a boolean field in model 'user' instead.
+    # current_user.active = False
+    #current_user.last_activity = datetime.utcnow() - timedelta(hours=1)
+
+    for cubicle in Cubicle.query.filter(and_(Cubicle.user_id == current_user.id, Cubicle.active == True)):
+        cubicle.active = False
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    else:
+        print("Removed cubicle '{}' from active state".format(cubicle.name))
 
     # Redirect back to login page
     return redirect(url_for('auth.login'))

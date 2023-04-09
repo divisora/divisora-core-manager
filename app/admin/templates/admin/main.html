@@ -19,6 +19,7 @@
         <th>username</th>
         <th>name</th>
         <th class="center">admin</th>
+        <th class="center">status</th>
         <th></th>
       </tr>
       {% for user in users %}
@@ -27,10 +28,11 @@
         <td>{{ user.username }}</td>
         <td>{{ user.name }}</td>
         <td class="center">{{ user.admin }}</td>
+        <td class="{{ user.online_status.class }} center">{{ user.online_status.msg }}</td>
         <td class="options">
           <span class="material-symbols-outlined edit" data-href="/admin/modal/user/{{ user.id }}">edit</span>
           <span class="material-symbols-outlined delete" data-href="/admin/modal/user/{{ user.id }}">delete</span>
-        </td>        
+        </td>
       </tr>
       {% endfor %}
     </table>
@@ -54,7 +56,7 @@
         <td>{{ node.name }}</td>
         <td>{{ node.ip }}</td>
         <td>{{ node.network_range }}</td>
-        <td class="status-ok center">OK</td>
+        <td class="{{ node.online_status.class }} center">{{ node.online_status.msg }}</td>
         <td class="options">
           <span class="material-symbols-outlined edit" data-href="/admin/modal/node/{{ node.id }}">edit</span>
           <span class="material-symbols-outlined delete" data-href="/admin/modal/node/{{ node.id }}">delete</span>
@@ -107,7 +109,7 @@
         <th>node</th>
         <th>novnc port</th>
         <th>network</th>
-        <th class="center">last activity</th>
+        <th class="center">active</th>
         <th></th>
       </tr>
       {% for cubicle in cubicles %}
@@ -118,7 +120,7 @@
         <td>{{ cubicle.node }}</td>
         <td>{{ cubicle.novnc_port }}</td>
         <td>{{ cubicle.network }}</td>
-        <td class="center">{{ cubicle.last_activity }}</td>
+        <td class="center">{{ cubicle.active }}</td>
         <td class="options">
           <span class="material-symbols-outlined edit" title="Edit cubicle" data-href="/admin/modal/cubicle/{{ cubicle.id }}">edit</span>
           <span class="material-symbols-outlined" title="Record keyboard">keyboard</span>
@@ -191,6 +193,28 @@
         $('#status').css({'display': ''});
       }, 3000);
       event.preventDefault();
+    });
+    $(document).on('click', '#generate-new-qr', function(event) {
+      var url = $(this).attr('data-href');
+      console.log(url);
+      $.ajax({
+        url: url,
+        type: 'GET',
+        dataType: 'json',
+        success: function(result) {
+          console.log(result.img);
+          $('#qr-code-img').attr('src', result.img);
+          $('#qr-code-link').attr('href', result.uri);
+        },
+        error: function(result) {
+          console.log(result);
+          $('#status').html(result.responseText);
+          $('#status').css({'display': 'flex'});
+          status = setTimeout(function() {
+            $('#status').css({'display': ''});
+          }, 3000);          
+        }
+      });
     });
   });
 </script>

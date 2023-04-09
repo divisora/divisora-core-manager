@@ -11,7 +11,9 @@ dependencies = [
     "Flask-SQLAlchemy>=3.0.3",
     "sqlalchemy_utils>=0.40.0",
     "passlib>=1.7.4",
-    "waitress>=2.1.2",    
+    "waitress>=2.1.2",
+    "pyotp>=2.8.0",
+    "qrcode>=7.4.2",
 ]
 
 [build-system]

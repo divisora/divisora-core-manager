@@ -13,7 +13,7 @@
 }
 
 .modal > .modal-content {
-    color: #cedfd9;
+    color: #b3b3b3;
     /* background-color: #24323d; */
     background-color: rgba(0, 0, 0, 0.87);
     box-shadow: 2px 2px 7px rgb(0 0 0 / 60%);
@@ -62,6 +62,14 @@
     font-size: 0.8em;
     align-self: center;
     flex: 0 1 0.8em;
+}
+
+.modal > .modal-content .modal-body > .box-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 .modal > .modal-content .modal-body > .box {
@@ -128,4 +136,8 @@
 
 .modal > .modal-content .modal-footer > button.submit {  
     background-color: #0a6b31;
+}
+
+.modal .qr-code {
+    width: 250px;
 }

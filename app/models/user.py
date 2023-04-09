@@ -11,6 +11,7 @@ from sqlalchemy_utils import force_auto_coercion
 from sqlalchemy import and_
 
 from datetime import datetime, timedelta
+import pyotp
 
 from app.models.cubicle import Cubicle
 from app.models.node import Node
@@ -29,6 +30,7 @@ class User(UserMixin, db.Model):
             'pbkdf2_sha512',
         ],
     ))
+    totp_key = db.Column(db.String(32))
     admin = db.Column(db.Boolean, default=False, nullable=False)
     last_activity = db.Column(db.DateTime(timezone=True))
     cubicles = db.relationship("Cubicle", backref="user", lazy="joined")
@@ -139,8 +141,10 @@ def setup(session):
             u.name = user["name"]
             u.username = user["username"]
             u.password = user["password"]
+            u.totp_key = pyotp.random_base32()
             u.admin = user["admin"]
-            u.last_activity = datetime.utcnow() - timedelta(days=1)
+            #u.last_activity = datetime.utcnow() - timedelta(days=1)
+            u.last_activity = datetime.fromtimestamp(0)
             for node in Node.query.all():
                 network = node.assign_network()
                 if network == None:

@@ -310,6 +310,20 @@ td > .material-symbols-outlined {
   color: #28a43d;
 }
 
+.status-warning {
+  color: #fb8e11;
+}
+
+.status-error {
+  color: #dd2626;
+}
+
+.status-unknown,
+.status-normal {
+  color: inherit;
+}
+
+
 #status {
   display: none;
   flex-direction: row;

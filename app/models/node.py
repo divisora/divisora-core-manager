@@ -9,12 +9,15 @@ from app.types.ip_network import IPNetworkType
 from app.models.network import Network
 from app.models.network import generate_networks
 
+from datetime import datetime
+
 class Node(db.Model):
     __tablename__ = 'node'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128))
     ip_address = db.Column(IPAddressType)
+    last_activity = db.Column(db.DateTime(timezone=True))
     network_range = db.Column(IPNetworkType)
     cubicles = db.relationship("Cubicle", backref="node", lazy="joined")
     networks = db.relationship("Network", backref="node", lazy="joined", order_by=Network.__table__.columns.id)
@@ -60,7 +63,11 @@ def setup(session):
             "name": "Node-2",
             "ip": "10.0.10.135",
             "range": "192.168.1.0/24",
-        },        
+        }, {
+            "name": "Node-3",
+            "ip": "127.0.0.1",
+            "range": "192.168.2.0/24",
+        },
     ]
     
     for node in nodes:
@@ -68,6 +75,7 @@ def setup(session):
         n.name = node["name"]
         n.ip_address = node["ip"]
         n.network_range = node["range"]
+        n.last_activity = datetime.fromtimestamp(0)
 
         session.add(n)
         session.commit()

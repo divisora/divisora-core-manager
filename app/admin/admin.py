@@ -6,9 +6,12 @@ from flask import render_template
 from flask_login import login_required, current_user
 
 import re
+import pyotp, qrcode
 from ipaddress import ip_network, ip_address
 from functools import wraps
-from datetime import datetime
+from datetime import datetime, timedelta
+from base64 import b64encode
+from io import BytesIO
 
 from app.models.user import User
 from app.models.node import Node
@@ -43,30 +46,58 @@ def update_last_activity():
 
 
 @admin.route('/admin')
-@login_required
-@admin_required
+#@login_required
+#@admin_required
 def main():
     # Get information about users
     users = []
     for user in User.query.all():
         name = user.name if user.name is not None else ""
         username = user.username if user.username is not None else ""
+        if user.last_activity < datetime.utcnow() - timedelta(hours=1):
+            status_msg = "Offline"
+            status_class = "status-normal"
+        elif user.last_activity < datetime.utcnow() - timedelta(minutes=1):
+            status_msg = "Idle"
+            status_class = "status-warning"
+        else:
+            status_msg = "Online"
+            status_class = "status-ok"
+        
         users.append({
             'id': user.id,
             'name': name,
             'username': username,
             'admin': user.admin,
+            'online_status': {
+                'msg': status_msg,
+                'class': status_class
+            }
         })
 
     # Get information about nodes
     nodes = []
     for node in Node.query.all():
         name = node.name if node.name is not None else ""
+        if node.last_activity < datetime.utcnow() - timedelta(minutes=3):
+            status_msg = "Offline"
+            status_class = "status-error"
+        elif node.last_activity < datetime.utcnow() - timedelta(minutes=1):
+            status_msg = "Idle"
+            status_class = "status-warning"
+        else:
+            status_msg = "Online"
+            status_class = "status-ok"
+
         nodes.append({
             'id': node.id,
             'name': name,
             'ip': node.ip_address,
             'network_range': node.network_range,
+            'online_status': {
+                'msg': status_msg,
+                'class': status_class
+            }            
         })
 
     # Get information about images
@@ -93,7 +124,7 @@ def main():
         node_name = cubicle.node.name if cubicle.node is not None else "Unknown"
         novnc_port = cubicle.novnc_port
         network = "Unknown"
-        last_activity = "Unknown"
+        active = False
 
         if cubicle.user is not None:
             for n in cubicle.user.networks:
@@ -104,7 +135,8 @@ def main():
                 network = n.name
                 break
 
-            last_activity = cubicle.user.last_activity
+            active = cubicle.active
+
         cubicles.append({
             'id': cubicle.id,
             'name': name,
@@ -113,7 +145,7 @@ def main():
             'node': node_name,
             'novnc_port': novnc_port,
             'network': network,
-            'last_activity': last_activity,
+            'active': active,
         })
         
     return render_template('admin/main.html', users=users, nodes=nodes, images=images, cubicles=cubicles)
@@ -227,6 +259,8 @@ def modal_add(type):
                 node.network_range = network_range
                 generate_networks(node, network_range)
 
+            node.last_activity = datetime.utcnow()
+
             db.session.add(node)
             db.session.commit()
 
@@ -314,6 +348,19 @@ def modal_get_id(type, id):
             val['id'] = user.id
             val['name'] = user.name
             val['username'] = user.username
+            totp_uri = pyotp.totp.TOTP(user.totp_key).provisioning_uri(
+                name = user.name,
+                issuer_name = 'Divisora',
+            )
+            img = qrcode.make(totp_uri)
+            image_io = BytesIO()
+            img.save(image_io, 'PNG')
+            dataurl = 'data:image/png;base64,' + b64encode(image_io.getvalue()).decode('ascii')
+            val['totp'] = {
+                'img': dataurl,
+                'uri': totp_uri,
+            }
+            
         case 'node':
             node = obj.query.filter_by(id=id).first()
             val['id'] = node.id
@@ -439,6 +486,8 @@ def modal_update_id(type, id):
                 # TODO: Delete old networks if the range is changed
                 generate_networks(node, network_range)
 
+            node.last_activity = datetime.utcnow()
+
             db.session.commit()
 
             return_msg = "Node {} updated!".format(name)
@@ -528,6 +577,39 @@ def modal_delete_id(type, id):
     return_msg = "Deleted {}:{}".format(type, id)
 
     return _modal_status_message('ok', return_msg)
+
+@admin.route('/admin/generate-qr/<id>', methods=['GET'])
+def generate_qr(id):
+    try:
+        _, id = _normalize_input_variables("", id)    
+    except Exception:
+        return _modal_status_message('error', 'Bad ID value'), 403
+    
+    # Check if the user is logged in and admin.
+    if not current_user.is_authenticated or not current_user.admin:
+        return _modal_status_message('error', 'QR Code could not be updated'), 403
+
+    # Update the QR code for user <id>
+    user = User.query.filter_by(id=id).first()
+
+    if not user:
+        return _modal_status_message('error', 'Unknown user-id')
+
+    user.totp_key = pyotp.random_base32()
+    db.session.commit()
+
+    totp_uri = pyotp.totp.TOTP(user.totp_key).provisioning_uri(
+        name = user.name,
+        issuer_name = 'Divisora',
+    )
+    img = qrcode.make(totp_uri)
+    image_io = BytesIO()
+    img.save(image_io, 'PNG')
+    dataurl = 'data:image/png;base64,' + b64encode(image_io.getvalue()).decode('ascii')
+    return {
+        'img': dataurl,
+        'uri': totp_uri,
+    }
 
 def _modal_status_message(status, text):
     return render_template('admin/modal/status.html', info={

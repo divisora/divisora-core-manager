@@ -3,6 +3,7 @@
 
 from flask import Blueprint, request
 from flask_login import login_required
+from sqlalchemy import and_
 
 from datetime import datetime, timedelta
 
@@ -13,6 +14,25 @@ from app.models.node import Node
 from app.extensions import db
 
 api = Blueprint('api', __name__)
+
+@api.before_request
+def update_last_activity():
+    real_ip = request.headers.get('X-Real-IP')
+    if not real_ip:
+        real_ip = request.remote_addr
+
+    node = Node.query.filter_by(ip_address=real_ip).first()
+    if not node:
+        return
+    
+    node.last_activity = datetime.utcnow()
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    else:
+        print("Updated last activity timer for {}".format(node.name))
 
 @api.route('/')
 def api_main():
@@ -26,10 +46,17 @@ def api_cubicle():
     }
 
     # Only return values for those cubicles who have a active owner.
-    for cubicle in Cubicle.query.filter(Cubicle.user_id != None).all():
+    for cubicle in Cubicle.query.filter(and_(Cubicle.user_id != None, Cubicle.active == True)).all():
         # Ignore cubicles where the user have been idle for more than 1 hour
         # TODO: Set this variable (hours=1) somewhere else.
         if cubicle.user.last_activity < datetime.utcnow() - timedelta(hours=1):
+            cubicle.active = False
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            else:
+                print("Removed cubicle '{}' from active state through API refresh".format(cubicle.name))
             continue
 
         network = None
