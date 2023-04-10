@@ -9,8 +9,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from sqlalchemy import and_
 
 from datetime import datetime, timedelta
-
 import time
+import pyotp
 
 from app.extensions import db
 
@@ -82,7 +82,9 @@ def login_post():
         flash("User do not exist")
         return redirect(url_for('auth.login'))
 
-    if user.check_password(password) == False:
+    totp = pyotp.TOTP(user.totp_key)
+
+    if user.check_password(password) == False and totp.verify(password) == False:
         flash("Password is wrong")
         return redirect(url_for('auth.login'))
 
