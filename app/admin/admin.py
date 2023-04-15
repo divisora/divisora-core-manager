@@ -455,7 +455,7 @@ def modal_update_id(type, id):
                 user.cubicles.append(cubicle)
             db.session.commit()
 
-            return_msg = "User {} updated!".format(name)
+            return_msg = "User {} updated!".format(user.name)
 
         case 'node':
             node = obj.query.filter_by(id=id).first()

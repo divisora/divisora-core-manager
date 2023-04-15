@@ -72,6 +72,10 @@
     gap: 10px;
 }
 
+.modal > .modal-content .modal-body > .box-qr > #generate-new-qr {
+    cursor: pointer;
+}
+
 .modal > .modal-content .modal-body > .box {
     display: flex;
     flex-direction: row;

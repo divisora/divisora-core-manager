@@ -30,6 +30,7 @@ class User(UserMixin, db.Model):
             'pbkdf2_sha512',
         ],
     ))
+    totp_enforce = db.Column(db.Boolean, default=True, nullable=False)
     totp_key = db.Column(db.String(32))
     admin = db.Column(db.Boolean, default=False, nullable=False)
     last_activity = db.Column(db.DateTime(timezone=True))
@@ -143,6 +144,8 @@ def setup(session):
             u.password = user["password"]
             u.totp_key = pyotp.random_base32()
             u.admin = user["admin"]
+            if u.admin:
+                u.totp_enforce = True
             #u.last_activity = datetime.utcnow() - timedelta(days=1)
             u.last_activity = datetime.fromtimestamp(0)
             for node in Node.query.all():

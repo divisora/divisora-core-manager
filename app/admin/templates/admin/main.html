@@ -183,9 +183,22 @@
     // Submit and display the returned result. Close it after 3 sec.
     $(document).on('submit', '#form-modal', function(event) {
       var url = event.currentTarget.action;
+
+      // "Enable" disabled inputs
+      var disabled_objects = [];
+      $(':disabled').each(function(e) {
+        $(this).prop('disabled', false);
+        disabled_objects.push($(this));
+      });
       var data = $('form#form-modal').serialize();
+
       $.post(url, data, function(event) {
         $('#status').html(event);
+      });
+
+      // "Disable" disabled inputs
+      disabled_objects.forEach(function(e) {
+        e.prop('disabled', true);
       });
 
       $('#status').css({'display': 'flex'});
