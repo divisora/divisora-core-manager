@@ -24,8 +24,8 @@ def setup(session):
             "cpu_limit": 1,
             "mem_limit": "1g",
         }, {
-            "name": "openbox-1.0",
-            "image": "divisora/cubicle-openbox:1.0",
+            "name": "ubuntu-latest",
+            "image": "divisora/cubicle-ubuntu:latest",
             "cpu_limit": 1,
             "mem_limit": "1g",
         },

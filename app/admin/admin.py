@@ -162,7 +162,7 @@ def modal_get(type):
     match type:
         case 'user':
             img = Image.query.all()
-            obj['images'] = {i.name: False for i in img}
+            obj['images'] = {i.name: False for i in img}          
         case 'node':
             pass
         case 'image':
@@ -208,12 +208,14 @@ def modal_add(type):
                 return error_msg
             user.username = username
 
-            success, error_msg, password = _normalize_password(request.form.get('new_password'))
-            if not success:
-                return error_msg
-            if password != request.form.get('new_password_confirm'):
-                return _modal_status_message('error', 'Passwords does not match')
-            user.password = password
+            # TODO: Set it to only work on the 'admin'-account
+            # if user.username == 'admin':
+                # success, error_msg, password = _normalize_password(request.form.get('new_password'))
+                # if not success:
+                #     return error_msg
+                # if password != request.form.get('new_password_confirm'):
+                #     return _modal_status_message('error', 'Passwords does not match')
+                # user.password = password
 
             for node in Node.query.all():
                 network = node.assign_network()
@@ -221,6 +223,14 @@ def modal_add(type):
                     print("Unable to assign network to user on {}. No subnets left?".format(node.name))
                     continue
                 user.networks.append(network)
+
+            # Set a random TOTP key
+            user.totp_key = pyotp.random_base32()
+            user.admin = False
+            user.totp_enforce = True
+
+            # Set a default time of timestamp(0)
+            user.last_activity = datetime.fromtimestamp(0)
 
             # Must add/commit before add_cubicle()
             db.session.add(user)

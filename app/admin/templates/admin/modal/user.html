@@ -43,6 +43,7 @@
         </div>
         <input type="password" name="new_password_confirm" placeholder="confirm">
       </div>
+      -->
       {% if 'username' not in obj %}
       <div class="box">
         <label for="select-image">Images</label>
@@ -57,11 +58,13 @@
         </select>
       </div>
       {% endif %}
--->
+
+      {% if 'username' in obj %}
       <div class="box-qr">
         <a id="qr-code-link" href="{{ obj.totp.uri }}"><img id="qr-code-img" class="qr-code" src="{{ obj.totp.img }}" /></a>
         <span data-href="/admin/generate-qr/{{ obj.id }}" id="generate-new-qr">Generate a new code</a>
       </div>
+      {% endif %}
     </div>
     <div class="modal-footer update">
       <button type="reset" class="reset"><span class="material-symbols-outlined ">restart_alt</span></button>

@@ -122,18 +122,23 @@ class User(UserMixin, db.Model):
 def setup(session):
     users = [
         {
+            "name": "Admin",
+            "username": "admin",
+            "password": "admin",
+            "admin": True,
+            "image": "openbox-latest",        
+        }, {
             "name": "Bob Bobsson",
             "username": "user1",
             "password": "test",
             "admin": False,
             "image": "openbox-latest",
-        },
-        {
+        }, {
             "name": "Dave Davidsson",
             "username": "user2",
             "password": "test",
             "admin": True,
-            "image": "openbox-1.0",
+            "image": "ubuntu-latest",
         },        
     ]
     try:
@@ -144,9 +149,9 @@ def setup(session):
             u.password = user["password"]
             u.totp_key = pyotp.random_base32()
             u.admin = user["admin"]
-            if u.admin:
+            # TODO: set enforce for all but only after admin have logged in once and changed it.
+            if u.username != "admin":
                 u.totp_enforce = True
-            #u.last_activity = datetime.utcnow() - timedelta(days=1)
             u.last_activity = datetime.fromtimestamp(0)
             for node in Node.query.all():
                 network = node.assign_network()
