@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from app.extensions import db
+""" User model """
 
-from flask_login import UserMixin
+from datetime import datetime
+
+from flask_login import UserMixin, current_user
 
 from sqlalchemy_utils import PasswordType
 from sqlalchemy_utils import force_auto_coercion
-#from sqlalchemy.sql import func
 from sqlalchemy import and_
+from sqlalchemy import event
 
-from datetime import datetime, timedelta
 import pyotp
 
+from app.extensions import db
 from app.models.cubicle import Cubicle
+from app.models.events import EventLog
 from app.models.node import Node
 from app.models.image import Image
 
 force_auto_coercion()
 
 class User(UserMixin, db.Model):
+    """ Base class for User-model """
     __tablename__ = 'user'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -36,19 +40,22 @@ class User(UserMixin, db.Model):
     last_activity = db.Column(db.DateTime(timezone=True))
     cubicles = db.relationship("Cubicle", backref="user", lazy="joined")
     networks = db.relationship("Network", backref="user", lazy="joined")
+    events = db.relationship("EventLog", backref="user", lazy="joined")
 
     __table_args__ = (
         db.UniqueConstraint(username),
     )
 
     def check_password(self, password):
+        """ Check if input password match """
         return self.password == password
 
     def add_cubicle(self, image_name):
+        """ Add cubicle to user """
         image = Image.query.filter_by(name=image_name).order_by(Image.id).first()
-        if image == None:
+        if image is None:
             print("Something went wrong while searching for the image. Maybe missing?")
-            return
+            return False
 
         # Check if image is already used.
         # for cubicle in self.cubicles:
@@ -56,32 +63,37 @@ class User(UserMixin, db.Model):
         #         return
 
         c = Cubicle()
-        c.name = "{}-{}".format(image.name, self.username)
+        c.name = f"{image.name}-{self.username}"
         i = 1
         while Cubicle.query.filter_by(name=c.name).first() is not None:
-            c.name = "{}-{}-duplicate-{}".format(image.name, self.username, i)
+            c.name = f"{image.name}-{self.username}-duplicate-{i}"
             i += 1
         c.image_id = image.id
-        c.node_id = (Node.query.get(1)).id # TODO: Do not assume id == 1. Query health and dynamic allocate cubicle to most fitted node. Or use sticky settings. 
+        # TODO: Do not assume id == 1.
+        # Query health and dynamic allocate cubicle to most fitted node. Or use sticky settings.
+        c.node_id = (Node.query.get(1)).id
         if c.node_id is None:
             print("Something went wrong with the networks/nodes")
-            return
+            return False
         c.novnc_port = (Node.query.get(c.node_id)).get_available_novnc_port()
         self.cubicles.append(c)
         try:
             db.session.commit()
-        except Exception as e:
-            print(e)
+        # pylint: disable=W0719:broad-exception-caught
+        except Exception as _error:
+            print(_error)
             db.session.rollback()
-        
+
         return True
 
-    def remove_cubicle(self, id):
+    def remove_cubicle(self, _id):
+        """ Remove cubicle with '_id' from user """
+
         # Return if not type 'int' or below 1
-        if not isinstance(id, int) or id < 1:
+        if not isinstance(_id, int) or _id < 1:
             return
 
-        cubicle = Cubicle.query.get(id)
+        cubicle = Cubicle.query.get(_id)
         if cubicle is None:
             return
 
@@ -89,40 +101,121 @@ class User(UserMixin, db.Model):
 
         try:
             db.session.commit()
-        except Exception as e:
-            print(e)
+        # pylint: disable=W0719:broad-exception-caught
+        except Exception as _error:
+            print(_error)
             db.session.rollback()
 
     def remove_cubicles(self):
+        """ Remove all cubicles from user"""
+
         cubicle_ids = []
         # Due to some race-condition we cannot remove while looping the same iterator.
         # Get the ids, add them to a list and then remove them.
         for cubicle in self.cubicles:
             cubicle_ids.append(cubicle.id)
 
-        for id in cubicle_ids:
-            self.remove_cubicle(id)
+        for _id in cubicle_ids:
+            self.remove_cubicle(_id)
 
     def get_upstream_novnc(self):
-        cubicle = Cubicle.query.filter(and_(Cubicle.user_id == self.id, Cubicle.active == True)).order_by(Cubicle.id).first()
+        """ Get the upstream adress to the NoVNC """
+
+        # pylint: disable=C0121:singleton-comparison
+        cubicle = Cubicle.query.filter(
+            and_(
+                Cubicle.user_id == self.id,
+                Cubicle.active == True,
+            )).order_by(Cubicle.id).first()
 
         if not cubicle or not cubicle.node:
             return ""
 
-        return "{}:{}".format(str(cubicle.node.ip_address), cubicle.novnc_port)
+        return f"{str(cubicle.node.ip_address)}:{cubicle.novnc_port}"
 
     def assign_network(self):
+        """ Assign a network to user """
+
         for node in Node.query.all():
             node.assign_network(self)
 
     def __repr__(self):
-        #return f'<Name "{self.name}", Username "{self.username}", Password: "{self.password}">, Cubicles "{\" \".join([c.name for c in self.cubicles])}"'
-        return '<Name "{}", Username "{}", Cubicles "{}">'.format(self.name, self.username, ", ".join([c.name for c in self.cubicles]))
+        """ __repr__ for User """
+        cubicles = ", ".join([c.name for c in self.cubicles])
+        return f'<Name "{self.name}", Username "{self.username}", Cubicles "{cubicles}">'
+
+def get_current_user_id() -> int|None:
+    """ Get id from current_user """
+    # Because of the wrapping of current_user, 'current_user is None' do not work
+    # current_user = LocalProxy(lambda: _get_user())
+    # pylint: disable=C0121:singleton-comparison
+    if current_user == None:
+        user = User.query.filter_by(username="system").first()
+        return user.id
+
+    if hasattr(current_user, "is_anonymous") and current_user.is_anonymous is True:
+        anonymous = User.query.filter_by(username="anonymous").first()
+        return anonymous.id
+
+    if hasattr(current_user, "is_authenticated") and current_user.is_authenticated is True:
+        return current_user.id
+
+    return None
+
+@event.listens_for(User, "after_insert")
+def insert_user_log(_, connection, target):
+    """ Add eventlog """
+
+    # Get the ID from whom the event was created
+    creator_id = get_current_user_id()
+    if creator_id is None:
+        print("Something bad happened")
+
+    # Add an event to the event-log
+    event_log_table = EventLog.__table__
+    connection.execute(
+        event_log_table.insert().values(
+            user_id=creator_id,
+            type="user",
+            text=f"Adding user '{target.username}'"
+        )
+    )
+
+# @event.listens_for(User, "after_update")
+@event.listens_for(User, "after_delete")
+def delete_user_log(_, connection, target):
+    """ Add eventlog """
+
+    # Get the ID from whom the event was created
+    creator_id = get_current_user_id()
+    if creator_id is None:
+        print("Something bad happened")
+
+    # Add an event to the event-log
+    event_log_table = EventLog.__table__
+    connection.execute(
+        event_log_table.insert().values(
+            user_id=creator_id,
+            type="user",
+            text=f"Deleted user '{target.username}'"
+        )
+    )
 
 def setup(session):
+    """ Model setup """
     users = [
         {
-            "name": "Admin",
+            "name": "Built-in system",
+            "username": "system",
+            "password": pyotp.random_base32(),
+            "admin": True,
+        }, {
+            "name": "Built-in Anonymous",
+            "username": "anonymous",
+            "password": pyotp.random_base32(),
+            "admin": False,
+        }, {
+            "name": "Built-in Admin",
             "username": "admin",
             "password": "admin",
             "admin": True,
@@ -139,7 +232,7 @@ def setup(session):
             "password": "test",
             "admin": True,
             "image": "ubuntu-latest",
-        },        
+        },
     ]
     try:
         for user in users:
@@ -147,21 +240,24 @@ def setup(session):
             u.name = user["name"]
             u.username = user["username"]
             u.password = user["password"]
-            u.totp_key = pyotp.random_base32()
             u.admin = user["admin"]
-            # TODO: set enforce for all but only after admin have logged in once and changed it.
-            if u.username != "admin":
-                u.totp_enforce = True
             u.last_activity = datetime.fromtimestamp(0)
-            for node in Node.query.all():
-                network = node.assign_network()
-                if network == None:
-                    print("Unable to assign network to user on {}. No subnets left?".format(node.name))
-                    continue
-                u.networks.append(network)
+
+            # Settings for all users but "system"
+            if u.username not in ["system", "anonymous"]:
+                u.totp_key = pyotp.random_base32()
+                if u.username != "admin":
+                    u.totp_enforce = True
+                for node in Node.query.all():
+                    network = node.assign_network()
+                    if network is None:
+                        print(f"Unable to assign network to user on {node.name}. No subnets left?")
+                        continue
+                    u.networks.append(network)
             session.add(u)
             session.commit()
-            u.add_cubicle(user["image"])
-
-    except Exception as e:
-        print(e)
+            if u.username not in ["system", "anonymous"]:
+                u.add_cubicle(user["image"])
+    # pylint: disable=W0719:broad-exception-caught
+    except Exception as _error:
+        print(_error)

@@ -1,35 +1,63 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from app.extensions import db
+""" Node model """
+
+from datetime import datetime
 
 from sqlalchemy_utils import IPAddressType
+
 from app.types.ip_network import IPNetworkType
+
+from app.extensions import db
 
 from app.models.network import Network
 from app.models.network import generate_networks
 
-from datetime import datetime
+STATUS_UP = 1
+STATUS_DOWN = 2
+STATUS_ERROR = 3
+STATUS_UNKNOWN = 4
+
+StatusTranslation = {
+    STATUS_UP: "up",
+    STATUS_DOWN: "down",
+    STATUS_ERROR: "error",
+    STATUS_UNKNOWN: "unknown",
+}
+
+def get_status_string(status_code: int) -> str:
+    """ Return string value for status_code """
+
+    # pylint: disable=C0301:line-too-long
+    return StatusTranslation[status_code] if status_code in StatusTranslation else StatusTranslation[STATUS_UNKNOWN]
 
 class Node(db.Model):
+    """ Base class for Node-model """
     __tablename__ = 'node'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128))
     ip_address = db.Column(IPAddressType)
+    status = db.Column(db.Integer)
     last_activity = db.Column(db.DateTime(timezone=True))
     network_range = db.Column(IPNetworkType)
-    cubicles = db.relationship("Cubicle", backref="node", lazy="joined")
-    networks = db.relationship("Network", backref="node", lazy="joined", order_by=Network.__table__.columns.id)
+    cubicles = db.relationship("Cubicle",
+                               backref="node",
+                               lazy="joined")
+    networks = db.relationship("Network",
+                               backref="node",
+                               lazy="joined",
+                               order_by=Network.__table__.columns.id)
 
     MIN_NOVNC_PORT = 30000
     MAX_NOVNC_PORT = 40000
 
     def get_available_novnc_port(self):
+        """ Return next best available port """
         occupied = False
         for port in range(self.MIN_NOVNC_PORT, self.MAX_NOVNC_PORT):
-            # TODO: Waaaay inefficient but will it ever be a problem?
-            # Cubicle.query.filter(node_id = self.id).filter(novnc_port = port).first() might be better.
+            # Inefficient but makes the job
             for cubicle in self.cubicles:
                 if cubicle.novnc_port != port:
                     continue
@@ -44,8 +72,9 @@ class Node(db.Model):
         return None
 
     def assign_network(self):
+        """ Assign a network """
         for network in self.networks:
-            if network.user != None:
+            if network.user is not None:
                 continue
             return network
         return None
@@ -54,7 +83,8 @@ class Node(db.Model):
         return f'<Name "{self.name}", IP "{self.ip_address}">'
 
 def setup(session):
-    nodes = [
+    """ Model setup """
+    add_nodes = [
         {
             "name": "Node-1",
             "ip": "10.0.10.117",
@@ -69,17 +99,18 @@ def setup(session):
             "range": "192.168.2.0/24",
         },
     ]
-    
-    for node in nodes:
-        n = Node()
-        n.name = node["name"]
-        n.ip_address = node["ip"]
-        n.network_range = node["range"]
-        n.last_activity = datetime.fromtimestamp(0)
 
-        session.add(n)
+    for add_node in add_nodes:
+        node = Node()
+        node.name = add_node["name"]
+        node.ip_address = add_node["ip"]
+        node.network_range = add_node["range"]
+        node.last_activity = datetime.fromtimestamp(0)
+        node.status = STATUS_UNKNOWN
+
+        session.add(node)
         session.commit()
 
-        generate_networks(n, node["range"])
+        generate_networks(node, add_node["range"])
 
     session.commit()

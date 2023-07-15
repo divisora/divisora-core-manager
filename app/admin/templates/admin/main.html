@@ -106,10 +106,11 @@
         <th>name</th>
         <th>user</th>
         <th>image</th>
-        <th>node</th>
-        <th>novnc port</th>
         <th>network</th>
+        <th>node</th>
+        <th class="center">novnc port</th>
         <th class="center">active</th>
+        <th class="center">rtt</th>
         <th></th>
       </tr>
       {% for cubicle in cubicles %}
@@ -117,12 +118,14 @@
         <td>{{ cubicle.name }}</td>
         <td>{{ cubicle.user }}</td>
         <td>{{ cubicle.image }}</td>
-        <td>{{ cubicle.node }}</td>
-        <td>{{ cubicle.novnc_port }}</td>
         <td>{{ cubicle.network }}</td>
+        <td>{{ cubicle.node }}</td>
+        <td class="center">{{ cubicle.novnc_port }}</td>
         <td class="center">{{ cubicle.active }}</td>
+        <td class="center">{{ cubicle.response_time|round(1) }}ms</td>
         <td class="options">
           <span class="material-symbols-outlined edit" title="Edit cubicle" data-href="/admin/modal/cubicle/{{ cubicle.id }}">edit</span>
+          <span class="material-symbols-outlined view" title="Statistics of cubicle" data-href="/admin/modal/measurement/{{ cubicle.id }}">insert_chart</span>
           <span class="material-symbols-outlined" title="Record keyboard">keyboard</span>
           <span class="material-symbols-outlined" title="Record screen">videocam</span>
           <span class="material-symbols-outlined" title="Take a screenshot">photo_camera</span>
@@ -162,8 +165,15 @@
       $('#status').css({'display': 'flex'});
       status = setTimeout(function() {
         $('#status').css({'display': ''});
-      }, 3000);      
-    })
+      }, 3000);
+    });
+    
+    $('.view').on('click', function() {
+      var url = $(this).attr('data-href');
+      var modal = $('#modal');
+      modal.load(url);
+      modal.css({'display': 'flex'});      
+    });
 
     // Close the modal if the user click the 'X' icon
     $(document).on('click', '#modal-close', function() {

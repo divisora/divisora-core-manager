@@ -241,10 +241,17 @@ div#admin-cubicles-container {
   grid-area: cubicles;
 }
 
+div#admin-events-container,
+div#admin-graphs-container {
+  grid-area: cubicles;
+}
+
 div#admin-users-container,
 div#admin-nodes-container,
 div#admin-images-container,
-div#admin-cubicles-container {
+div#admin-cubicles-container,
+div#admin-events-container,
+div#admin-graphs-container {
   display: flex;
   flex-direction: column;
   height: inherit;
@@ -269,6 +276,17 @@ div#admin-box > div > .header > .material-symbols-outlined {
   font-size: 20px;
 }
 
+div#admin-box > div#admin-graphs-container img {
+  width: calc(50% - 8px);
+}
+
+div#admin-box > div#admin-graphs-container > div:nth-child(2) {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
 table, th, td {
   border: 0px;
   border-collapse: collapse;
@@ -277,6 +295,7 @@ table, th, td {
 th, td {
   text-align: left;
   padding: 3px 5px;
+  white-space: nowrap;
 }
 
 div#admin-box > div > table > * > tr:nth-child(even) {
@@ -293,6 +312,11 @@ td.options {
 th.center,
 td.center {
   text-align: center
+}
+
+th.fill-space,
+td.fill-space {
+  width: 100%;
 }
 
 td > .material-icons,

@@ -26,7 +26,13 @@ click-plugins==1.1.1
 click-repl==0.2.0
     # via celery
 colorama==0.4.6
-    # via click
+    # via
+    #   click
+    #   qrcode
+contourpy==1.1.0
+    # via matplotlib
+cycler==0.11.0
+    # via matplotlib
 flask==2.2.3
     # via
     #   divisora-core-manager (pyproject.toml)
@@ -36,28 +42,54 @@ flask-login==0.6.2
     # via divisora-core-manager (pyproject.toml)
 flask-sqlalchemy==3.0.3
     # via divisora-core-manager (pyproject.toml)
+fonttools==4.41.0
+    # via matplotlib
 greenlet==2.0.2
     # via sqlalchemy
 itsdangerous==2.1.2
     # via flask
 jinja2==3.1.2
     # via flask
+kiwisolver==1.4.4
+    # via matplotlib
 kombu==5.2.4
     # via celery
 markupsafe==2.1.1
     # via
     #   jinja2
     #   werkzeug
+matplotlib==3.7.2
+    # via divisora-core-manager (pyproject.toml)
+numpy==1.25.1
+    # via
+    #   contourpy
+    #   matplotlib
+packaging==23.1
+    # via matplotlib
 passlib==1.7.4
     # via divisora-core-manager (pyproject.toml)
+pillow==10.0.0
+    # via matplotlib
 prompt-toolkit==3.0.38
     # via click-repl
+pyotp==2.8.0
+    # via divisora-core-manager (pyproject.toml)
+pyparsing==3.0.9
+    # via matplotlib
+pypng==0.20220715.0
+    # via qrcode
+python-dateutil==2.8.2
+    # via matplotlib
 pytz==2022.7.1
     # via celery
+qrcode==7.4.2
+    # via divisora-core-manager (pyproject.toml)
 redis==4.5.1
     # via celery
 six==1.16.0
-    # via click-repl
+    # via
+    #   click-repl
+    #   python-dateutil
 sqlalchemy==2.0.5.post1
     # via
     #   flask-sqlalchemy
@@ -65,7 +97,9 @@ sqlalchemy==2.0.5.post1
 sqlalchemy-utils==0.40.0
     # via divisora-core-manager (pyproject.toml)
 typing-extensions==4.5.0
-    # via sqlalchemy
+    # via
+    #   qrcode
+    #   sqlalchemy
 vine==5.0.0
     # via
     #   amqp

@@ -1,0 +1,15 @@
+<div class="modal-content">
+  <form id="form-modal" action="/admin/modal/measurement{% if 'id' in obj %}/{{ obj.id }}{% endif %}">
+    <div class="modal-header">
+      <span>Statistics</span>
+      <span id="modal-close" class="material-symbols-outlined ">close</span>
+    </div>
+    <div class="modal-body graphs">
+      {% for graph in obj.graphs %}
+      <img src='data:image/png;base64,{{ graph }}'/>
+      {% endfor %}
+    </div>
+    <div class="modal-footer update">
+    </div>
+  </form>
+</div>

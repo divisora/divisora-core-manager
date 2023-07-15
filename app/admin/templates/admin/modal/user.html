@@ -19,8 +19,8 @@
         </div>
         <input type="text" name="username" placeholder="Username" value="{% if 'username' in obj %}{{ obj.username }}{% endif %}" {% if 'username' in obj %}disabled{% endif %} required>
       </div>
-<!--
-      {% if 'username' in obj %}
+
+      {% if 'is_admin' in obj and obj.is_admin %}
       <div class="box">
         <label for="current_password">Current password</label>
         <div class="icon">
@@ -28,7 +28,6 @@
         </div>
         <input type="password" name="current_password" placeholder="current">
       </div>
-      {% endif %}
       <div class="box">
         <label for="new_password">New password</label>
         <div class="icon">
@@ -43,7 +42,8 @@
         </div>
         <input type="password" name="new_password_confirm" placeholder="confirm">
       </div>
-      -->
+      {% endif %}
+
       {% if 'username' not in obj %}
       <div class="box">
         <label for="select-image">Images</label>

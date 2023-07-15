@@ -58,6 +58,10 @@
     padding: 30px 10px;
 }
 
+.modal > .modal-content .modal-body.graphs {
+    padding: 10px;
+}
+
 .modal > .modal-content .modal-footer {
     font-size: 0.8em;
     align-self: center;
