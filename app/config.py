@@ -34,6 +34,10 @@ class Config():
         "broker_connection_retry_on_startup": True,
         "task_track_started": True,
         "beat_schedule": {
+            'check_all_nodes': {
+                'task': 'app.tasks.schedule.check_all_nodes',
+                'schedule': 5.0,
+            },            
             'check-node-compliance': {
                 'task': 'app.tasks.schedule.check_node_compliance',
                 'schedule': 10.0,
