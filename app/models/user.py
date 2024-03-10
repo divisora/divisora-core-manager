@@ -80,6 +80,9 @@ class User(UserMixin, db.Model):
             print("Something went wrong with the networks/nodes")
             return False
         
+        # Insecure defines if the connection is using HTTP or HTTPS
+        c.insecure = insecure
+
         # Local / Debug option
         if use_alt_novnc_name:
             c.novnc_name = c.name + "_novnc"
