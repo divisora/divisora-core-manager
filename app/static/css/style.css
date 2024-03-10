@@ -225,6 +225,7 @@ div#admin-box {
   color: #ffffff;
   gap: 10px;
 }
+
 div#admin-users-container {
   grid-area: users;
 }

@@ -4,7 +4,9 @@
 """ User model """
 
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse
 
+from flask import session
 from flask_login import UserMixin, current_user
 
 from sqlalchemy_utils import PasswordType
@@ -46,11 +48,13 @@ class User(UserMixin, db.Model):
         db.UniqueConstraint(username),
     )
 
+    active_cubicle_id = None
+
     def check_password(self, password):
         """ Check if input password match """
         return self.password == password
 
-    def add_cubicle(self, image_name):
+    def add_cubicle(self, image_name, node_id: int = 1, insecure: bool = False, use_alt_novnc_name: bool = False):
         """ Add cubicle to user """
         image = Image.query.filter_by(name=image_name).order_by(Image.id).first()
         if image is None:
@@ -71,11 +75,16 @@ class User(UserMixin, db.Model):
         c.image_id = image.id
         # TODO: Do not assume id == 1.
         # Query health and dynamic allocate cubicle to most fitted node. Or use sticky settings.
-        c.node_id = (Node.query.get(1)).id
+        c.node_id = (Node.query.get(node_id)).id
         if c.node_id is None:
             print("Something went wrong with the networks/nodes")
             return False
+        
+        # Local / Debug option
+        if use_alt_novnc_name:
+            c.novnc_name = c.name + "_novnc"
         c.novnc_port = (Node.query.get(c.node_id)).get_available_novnc_port()
+
         self.cubicles.append(c)
         try:
             db.session.commit()
@@ -118,20 +127,48 @@ class User(UserMixin, db.Model):
         for _id in cubicle_ids:
             self.remove_cubicle(_id)
 
-    def get_upstream_novnc(self):
+    def set_active_cubicle(self, cubicle_id: int = None) -> bool:
+        """ Set id for the active cubicle """
+
+        if cubicle_id not in [c.id for c in self.cubicles]:
+            return False
+
+        session["cubicle_id"] = cubicle_id
+        return True
+
+    def get_upstream_novnc(self) -> str:
         """ Get the upstream adress to the NoVNC """
 
-        # pylint: disable=C0121:singleton-comparison
-        cubicle = Cubicle.query.filter(
-            and_(
-                Cubicle.user_id == self.id,
-                Cubicle.active == True,
-            )).order_by(Cubicle.id).first()
+        # # pylint: disable=C0121:singleton-comparison
+        # cubicle = Cubicle.query.filter(
+        #     and_(
+        #         Cubicle.user_id == self.id,
+        #         Cubicle.active == True,
+        #     )).order_by(Cubicle.id).first()
 
-        if not cubicle or not cubicle.node:
-            return ""
+        # if not cubicle or not cubicle.node:
+        #     return ""
 
-        return f"{str(cubicle.node.ip_address)}:{cubicle.novnc_port}"
+        upstream_url = urlparse('')
+
+        for cubicle in self.cubicles:
+            if cubicle.id != session["cubicle_id"]:
+                continue
+
+            scheme = "http" if cubicle.insecure else "https"
+
+            if cubicle.novnc_name != "":
+                netloc = cubicle.novnc_name
+            else:
+                netloc = cubicle.node.domain_name if cubicle.node.domain_name != "" else str(cubicle.node.ip_address)
+            netloc += f":{cubicle.novnc_port}"
+            
+            upstream_url = upstream_url._replace(scheme=scheme, netloc=netloc)
+
+            # Always break if cubicle is found
+            break
+
+        return urlunparse(upstream_url)
 
     def assign_network(self):
         """ Assign a network to user """
@@ -257,7 +294,9 @@ def setup(session):
             session.add(u)
             session.commit()
             if u.username not in ["system", "anonymous"]:
-                u.add_cubicle(user["image"])
+                u.add_cubicle(user["image"], 1)
+                u.add_cubicle(user["image"], 2)
+                u.add_cubicle(user["image"], 3, insecure = True, use_alt_novnc_name = True)
     # pylint: disable=W0719:broad-exception-caught
     except Exception as _error:
         print(_error)

@@ -12,9 +12,11 @@ class Cubicle(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128))
     active = db.Column(db.Boolean, default=False, nullable=False)
+    insecure = db.Column(db.Boolean, default=False, nullable=False)
+    novnc_name = db.Column(db.String(128)) # Only used if NOVNC runs on the same host as Nginx/Core
     novnc_port = db.Column(db.Integer)
     response_time = db.Column(db.Float, default=0.0)
-    measurements = db.relationship("ResponseTimeCubicle", backref="cubicle", lazy="joined")
+    measurements = db.relationship("ResponseTimeCubicle", backref="cubicle", lazy="noload")
     image_id = db.Column(db.Integer, db.ForeignKey("image.id"))
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
     node_id = db.Column(db.Integer, db.ForeignKey("node.id"))
@@ -24,7 +26,7 @@ class Cubicle(db.Model):
     )
     def __repr__(self):
         # pylint: disable=C0301:line-too-long
-        return f'<Name "{self.name}", Image "{self.image}", Node "{self.node_id}", Active "{self.active}">'
+        return f'<Name "{self.name}", Image "{self.image.name}", Node "{self.node_id}", Active "{self.active}">'
 
 # def setup(session):
 #     """ Model setup """

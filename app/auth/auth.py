@@ -18,6 +18,7 @@ from sqlalchemy import and_
 
 from app.extensions import db
 from app.extensions import login_manager
+from app.extensions import logger
 
 from app.models.user import User
 #from app.models.node import Node
@@ -28,7 +29,6 @@ auth = Blueprint('auth', __name__, template_folder='templates')
 @login_manager.user_loader
 def load_user(user_id):
     """ Load user object """
-    print("auth")
     if user_id is not None:
         return User.query.get(user_id)
     return None
@@ -42,6 +42,8 @@ def update_last_activity():
     user.last_activity = datetime.utcnow()
     db.session.commit()
 
+# This method is obselete for measurements
+# NoVNC have javacript calling this to not timeout sessions
 @auth.route('/keepalive')
 @login_required
 def keep_alive():
@@ -106,6 +108,7 @@ def login_post():
 
     match option:
         case 'vnc':
+            return redirect(url_for('dashboard.main'))
             # Add cubicle to the logged in user
             # pylint: disable=C0301:line-too-long
             active_cubicle = Cubicle.query.filter(and_(Cubicle.user_id == user.id, Cubicle.active is True)).first()
@@ -150,6 +153,8 @@ def login_post():
                 query['resize'] = 'remote'
                 next_url = next_url._replace(query=urlencode(query, doseq=True))
 
+            logger.info(f"Redirecting to {next_url}")
+            print(f"Redirecting to {next_url}")
             resp = make_response(redirect(urlunparse(next_url)))
         case 'admin':
             resp = redirect(url_for('admin.main'))
@@ -158,15 +163,11 @@ def login_post():
 
     return resp
 
+
 @auth.route('/logout')
 @login_required
 def logout():
     """ Logout handler """
-    # Remove all cubicles
-    #current_user.remove_cubicles()
-
-    # Logout the user
-    logout_user()
 
     # 'reset' timer by lowering it be 1 hour.
     # pylint: disable=W0511:fixme
@@ -177,13 +178,16 @@ def logout():
     # pylint: disable=C0301:line-too-long
     for cubicle in Cubicle.query.filter(and_(Cubicle.user_id == current_user.id, Cubicle.active is True)):
         cubicle.active = False
-        print(f"Removed cubicle '{cubicle.name}' from active state")
+        logger.info(f"Removed cubicle '{cubicle.name}' from active state")
 
     try:
         db.session.commit()
     # pylint: disable=W0718:broad-exception-caught
     except Exception:
         db.session.rollback()
+
+    # Logout the user
+    logout_user()
 
     # Redirect back to login page
     return redirect(url_for('auth.login'))
@@ -192,23 +196,31 @@ def logout():
 @login_required
 def authenticate():
     """
-    If the user is authenticated, 
-    this function returns a referense to nginx where the next page is located
+    When the user is authenticated, this function returns a referense (X-URL) for Nginx.
+    X-URL is used with proxy_pass to relay traffic to the correct NoVNC server and port.
+
+    When the user is NOT authenticated, @login_required decorater will return a Error 401,
+    which is what Nginx expects. This is only true if login_manager.login_view is not set.
     """
-    # default response to @login_required without login_manager.login_view set is Error 401,
-    # same as what nginx wants
+
     resp = make_response("")
     resp.status_code = 200
     resp.headers['X-URL'] = ""
 
+    # X-Auth-Request-Redirect is set by Nginx
     target = request.headers.get('X-Auth-Request-Redirect')
     path = (urlparse(target).path).split('/')
 
-    if path[1] == 'admin' or path[1] == 'api':
-        pass
+    if path[1] in ['admin', 'api', 'dashboard']:
+        del resp.headers['X-URL']
     else:
-        resp.headers['X-URL'] = current_user.get_upstream_novnc()
-
-    #print("Redirecting user to: {}\n".format(resp.headers['X-URL']))
+        url = current_user.get_upstream_novnc()
+        if url != "":
+            resp.headers['X-URL'] = url
+            logger.info(f"Redirecting {current_user.username} -> {resp.headers['X-URL']}")
+        else:
+            # If the URL is empty, return Error 401 so Nginx can redirect the client correctly.
+            resp.status_code = 401
+            del resp.headers['X-URL']
 
     return resp

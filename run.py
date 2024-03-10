@@ -8,7 +8,12 @@ Support file
 - celery -A run beat --loglevel INFO
 """
 
+from waitress import serve
+
 from app import create_app
 
-flask_app = create_app()
-celery = flask_app.extensions["celery"]
+app = create_app()
+celery = app.extensions["celery"]
+
+if __name__ == '__main__':
+    serve(app, host='0.0.0.0', port=5000)

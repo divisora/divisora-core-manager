@@ -1,0 +1,87 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    image: divisora/core-manager:latest
+    container_name: divisora_core-manager_web
+    stop_signal: SIGINT
+    environment:
+      - FLASK_DB=populate    
+    volumes:
+      - db:/usr/src/app/db    
+    ports:
+      - 5000:5000
+    networks:
+      - backend
+      - celery_backend
+    depends_on:
+      - redis
+
+  celery_worker:
+    image: divisora/core-manager:latest
+    container_name: divisora_core-manager_worker
+    command: celery -A run.celery worker --loglevel=info
+    volumes:
+      - db:/usr/src/app/db    
+    networks:
+      - frontend
+      - celery_backend    
+    depends_on:
+      - redis
+
+  celery_beat:
+    image: divisora/core-manager:latest
+    container_name: divisora_core-manager_beat
+    command: celery -A run.celery beat --loglevel=info
+    volumes:
+      - db:/usr/src/app/db    
+    networks:
+      - celery_backend    
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: divisora_core-manager_redis
+    networks:
+      celery_backend:
+        aliases:
+          - redis
+
+  nginx:
+    image: divisora/nginx
+    container_name: divisora_core-manager_nginx
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - frontend
+      - backend
+      - celery_backend
+    depends_on:
+      - web
+  
+  node-manager:
+    image: divisora/node-manager:latest
+    container_name: divisora_node-manager
+    stop_signal: SIGINT
+    environment:
+      - BIND_NOVNC_LOCAL_NET=divisora-core-manager_celery_backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock    
+    networks:
+      celery_backend:
+        aliases:
+          - node-3
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+  celery_backend:
+    driver: bridge
+
+volumes:
+  db:

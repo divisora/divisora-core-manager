@@ -1,0 +1,50 @@
+div#dashboard-box {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    color: #ffffff;
+    gap: 10px;
+}
+
+div#dashboard-box > div.cubicle {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px;
+    gap: 15px;
+    width: 300px;
+    color: #ffffff;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.6);
+}
+
+div#dashboard-box > div.cubicle > img {
+    width: 80px;
+    height: 80px;
+}
+
+div#dashboard-box > div.cubicle:hover {
+    cursor: pointer;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+div#dashboard-box > div.cubicle > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: calc(100% - 95px);
+    height: 100%;
+    overflow: hidden;
+}
+
+div#dashboard-box > div.cubicle > div > div {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    white-space: nowrap;
+}
+
+div#dashboard-box > div.cubicle > div > .header > * {
+    width: 100%;
+    line-height: 1;
+}

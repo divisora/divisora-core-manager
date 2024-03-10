@@ -36,7 +36,6 @@
       </tr>
       {% endfor %}
     </table>
-
   </div>
   <div id="admin-nodes-container">
     <div class="header">
@@ -46,8 +45,9 @@
     <table>
       <tr>
         <th>name</th>
-        <th>ip</th>
-        <th>range</th>
+        <th>address</th>
+        <!--<th>range</th>-->
+        <th class="center">rtt</th>
         <th class="center">status</th>
         <th></th>
       </tr>
@@ -55,10 +55,12 @@
       <tr>
         <td>{{ node.name }}</td>
         <td>{{ node.ip }}</td>
-        <td>{{ node.network_range }}</td>
+        <!--<td>{{ node.network_range }}</td>-->
+        <td class="center">{{ node.response_time|round(1) }}ms</td>
         <td class="{{ node.online_status.class }} center">{{ node.online_status.msg }}</td>
         <td class="options">
           <span class="material-symbols-outlined edit" data-href="/admin/modal/node/{{ node.id }}">edit</span>
+          <span class="material-symbols-outlined view" title="Statistics of node" data-href="/admin/modal/measurement/node/{{ node.id }}">insert_chart</span>
           <span class="material-symbols-outlined delete" data-href="/admin/modal/node/{{ node.id }}">delete</span>
         </td>
       </tr>
@@ -125,7 +127,7 @@
         <td class="center">{{ cubicle.response_time|round(1) }}ms</td>
         <td class="options">
           <span class="material-symbols-outlined edit" title="Edit cubicle" data-href="/admin/modal/cubicle/{{ cubicle.id }}">edit</span>
-          <span class="material-symbols-outlined view" title="Statistics of cubicle" data-href="/admin/modal/measurement/{{ cubicle.id }}">insert_chart</span>
+          <span class="material-symbols-outlined view" title="Statistics of cubicle" data-href="/admin/modal/measurement/cubicle/{{ cubicle.id }}">insert_chart</span>
           <span class="material-symbols-outlined" title="Record keyboard">keyboard</span>
           <span class="material-symbols-outlined" title="Record screen">videocam</span>
           <span class="material-symbols-outlined" title="Take a screenshot">photo_camera</span>

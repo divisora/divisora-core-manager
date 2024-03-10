@@ -13,23 +13,30 @@ MIN_USERNAME_LENGTH = 2
 MIN_PASSWORD_LENGTH = 5
 CPU_LIMIT = 10
 
-# pylint: disable=R0903:too-few-public-methods
+# pylint: disable-next=R0903:too-few-public-methods
 class Config():
     """ Base config class """
+
+    # Flask settings
     SECRET_KEY = os.environ.get('SECRET_KEY') or secrets.token_hex()
-    # pylint: disable=C0301:line-too-long
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URI') or 'sqlite:///' + os.path.join(basedir, 'app.db')
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
     PERMANENT_SESSION_LIFETIME =  timedelta(minutes=60)
 
-# pylint: disable=R0903:too-few-public-methods
-class DevConfig(Config):
-    """ Development configuration """
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    DEBUG = True
+    # SQLAlchemy settings
+    # pylint: disable-next=C0301:line-too-long
+    SQLALCHEMY_DATABASE_URI = os.environ.get('SQLALCHEMY_DATABASE_URI') or 'sqlite:///' + os.path.join(basedir, '../db/app.db')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-# pylint: disable=R0903:too-few-public-methods
-class ProdConfig(Config):
-    """ Production configuration """
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    DEBUG = False
+    # Celery settings
+    CELERY = {
+        "broker_url": "redis://redis:6379",
+        "result_backend": "redis://redis:6379",
+        "broker_connection_retry": False,
+        "broker_connection_retry_on_startup": True,
+        "task_track_started": True,
+        "beat_schedule": {
+            'check-node-compliance': {
+                'task': 'app.tasks.schedule.check_node_compliance',
+                'schedule': 10.0,
+            },
+        },
+    }

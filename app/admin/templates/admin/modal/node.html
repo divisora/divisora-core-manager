@@ -20,6 +20,13 @@
         <input type="text" name="ip_address" value="{% if 'ip_address' in obj %}{{ obj.ip_address }}{% endif %}" placeholder="192.168.0.1" required>
       </div>
       <div class="box">
+        <label for="api_key">API Key</label>
+        <div class="icon">
+          <span class="material-symbols-outlined ">key</span>
+        </div>
+        <input type="text" name="api_key" value="{% if 'api_key' in obj %}{{ obj.api_key }}{% endif %}" placeholder="3f6d77ac1..." required>
+      </div>      
+      <div class="box">
         <label for="network_range">Network Range</label>
         <div class="icon">
           <span class="material-symbols-outlined ">arrow_range</span>

@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="dashboard-box">
+    {% for cubicle in cubicles %}
+    <div class="cubicle" data-href="">
+        <img src="{{ url_for('static', filename= 'pics/dashboard/ubuntu.png') }}">
+        <div>
+            <form action="" method="post">
+                <input type="hidden" name="cubicle_id" value="{{ cubicle.id }}">
+            </form>
+            <div>
+                <span>Node</span>
+                <span class="{% if cubicle.active %}status-ok{% endif %}">{{ cubicle.node }}</span>
+            </div>
+            <div>
+                <span>Image</span>
+                <span>{{ cubicle.image }}</span>
+            </div>
+            <div>
+                <span>Network</span>
+                <span>{{ cubicle.network }}</span>
+            </div>            
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+{% block javascript %}
+<script>
+$(document).ready(function() {
+    $(document).on('click', '.cubicle', function(event) {
+        $('form', this).trigger("submit");
+    });
+});
+</script>
+{% endblock %}

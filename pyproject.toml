@@ -9,6 +9,7 @@ dependencies = [
     "celery[redis]>=5.2.7",
     "Flask-Login>=0.6.2",
     "Flask-SQLAlchemy>=3.0.3",
+    "Flask-Migrate>=4.0.5",    
     "matplotlib>=3.7.2",
     "sqlalchemy_utils>=0.40.0",
     "passlib>=1.7.4",
@@ -16,6 +17,9 @@ dependencies = [
     "pyotp>=2.8.0",
     "qrcode>=7.4.2",
 ]
+
+[tool.setuptools]
+packages = ["app"]
 
 [build-system]
 requires = ["setuptools", "wheel"]

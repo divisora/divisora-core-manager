@@ -11,6 +11,13 @@
   <div id="admin-graphs-container">
     <div class="header">
       <h2>Measurements</h2>
+      <select id="select-time-range" name="time-range">
+        <option {% if time_range == 4 %}selected{% endif %} value="4">4h</option>
+        <option {% if time_range == 8 %}selected{% endif %} value="8">8h</option>
+        <option {% if time_range == 24 %}selected{% endif %} value="24">24h</option>
+        <option {% if time_range == 48 %}selected{% endif %} value="48">2d</option>
+        <option {% if time_range == 168 %}selected{% endif %} value="168">7d</option>
+      </select>
     </div>
     <div>
         {% for graph in graphs %}
@@ -22,4 +29,15 @@
 <div id="disclaimer">
   <span>Content based on <a href="https://github.com/divisora">github.com/divisora</a> used under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GPLv3</a> license</span>
 </div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+  $(document).ready(function() {
+    $('#select-time-range').on('change', function() {
+      document.cookie = "divisora_graphtimerange=" + $(this).val() + "; path=/";
+      location.reload();
+    });    
+  });
+</script>
 {% endblock %}

@@ -3,7 +3,6 @@
 
 """ Admin blueprint """
 
-
 import re
 
 from ipaddress import ip_network, ip_address
@@ -15,9 +14,6 @@ from io import BytesIO
 import pyotp
 import qrcode
 
-import matplotlib.dates as md
-import matplotlib.pyplot as plt
-
 from flask import Blueprint, request
 from flask import render_template
 from flask_login import login_required, current_user
@@ -27,7 +23,8 @@ from app.models.node import Node, get_status_string
 from app.models.image import Image
 from app.models.cubicle import Cubicle
 from app.models.events import EventLog
-from app.models.measurements import ResponseTimeCubicle
+from app.models.measurements import ResponseTimeCubicle, ResponseTimeNode
+from app.models.measurements import create_timestamp_graph
 
 from app.config import MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH, CPU_LIMIT
 from app.extensions import db, login_manager
@@ -57,7 +54,7 @@ def update_last_activity():
     db.session.commit()
 
 
-@admin.route('/admin')
+@admin.route('/')
 #@login_required
 #@admin_required
 def main():
@@ -90,25 +87,26 @@ def main():
 
     # Get information about nodes
     nodes = []
-    for node in Node.query.all():
-        name = node.name if node.name is not None else ""
-        if node.last_activity < datetime.utcnow() - timedelta(minutes=3):
+    for _id, name, last_activity, _ip_address, network_range, response_time, status in db.session.execute(db.select(Node.id, Node.name, Node.last_activity, Node.ip_address, Node.network_range, Node.response_time, Node.status)).all():
+        name = name if name is not None else ""
+        if last_activity < datetime.utcnow() - timedelta(minutes=3):
             status_msg = "Offline"
             status_class = "status-error"
-        elif node.last_activity < datetime.utcnow() - timedelta(minutes=1):
+        elif last_activity < datetime.utcnow() - timedelta(minutes=1):
             status_msg = "Idle"
             status_class = "status-warning"
         else:
             status_msg = "Online"
             status_class = "status-ok"
-
-        status_msg = get_status_string(node.status)
+#        return render_template('admin/modal/error.html')
+        status_msg = get_status_string(status)
 
         nodes.append({
-            'id': node.id,
+            'id': _id,
             'name': name,
-            'ip': node.ip_address,
-            'network_range': node.network_range,
+            'ip': _ip_address,
+            'network_range': network_range,
+            'response_time': response_time,
             'online_status': {
                 'msg': status_msg,
                 'class': status_class
@@ -171,7 +169,7 @@ def main():
                            images=images,
                            cubicles=cubicles)
 
-@admin.route('/admin/modal/<_type>', methods=['GET'])
+@admin.route('/modal/<_type>', methods=['GET'])
 def modal_get(_type):
     """ Get modal based on which type is requested """
     try:
@@ -204,7 +202,7 @@ def modal_get(_type):
 
     return render_template(f'admin/modal/{_type}.html', obj=obj)
 
-@admin.route('/admin/modal/<_type>', methods=['POST'])
+@admin.route('/modal/<_type>', methods=['POST'])
 def modal_add(_type):
     """ Update modal based on type """
     _type, _ = _normalize_input_variables(_type, 0)
@@ -269,17 +267,22 @@ def modal_add(_type):
                 ip_address(node_ip)
             except ValueError:
                 return _modal_status_message('error', 'IP address is in a bad format')
-            else:
-                node.ip_address = node_ip
+            node.ip_address = node_ip
+
+            api_key = request.form.get('api_key')
+            try:
+                int(api_key, 16)
+            except ValueError:
+                return _modal_status_message('error', 'API key is not a hex value')
+            node.api_key = api_key
 
             network_range = request.form.get('network_range')
             try:
                 ip_network(network_range)
             except ValueError:
                 return _modal_status_message('error', 'Network range is in a bad format')
-            else:
-                node.network_range = network_range
-                generate_networks(node, network_range)
+            node.network_range = network_range
+            generate_networks(node, network_range)
 
             node.last_activity = datetime.utcnow()
 
@@ -351,7 +354,7 @@ def modal_add(_type):
 
     return _modal_status_message('ok', return_msg)
 
-@admin.route('/admin/modal/<_type>/<_id>', methods=['GET'])
+@admin.route('/modal/<_type>/<_id>', methods=['GET'])
 def modal_get_id(_type, _id):
     """ Get modal based on which type and id are requested """
     try:
@@ -390,6 +393,7 @@ def modal_get_id(_type, _id):
             val['id'] = node.id
             val['name'] = node.name
             val['ip_address'] = node.ip_address
+            val['api_key'] = node.api_key
             val['network_range'] = node.network_range
         case 'image':
             image = obj.query.filter_by(id=_id).first()
@@ -438,28 +442,21 @@ def modal_get_id(_type, _id):
                 x_axis.append(reponse_time.timestamp)
                 y_axis.append(reponse_time.rtt)
 
-            figure, axes = plt.subplots()
-            figure.set_figwidth(8)
-            figure.set_figheight(3)
-            axes.set_title(f"Response Time - {cubicle.name}")
-            axes.set_xlabel("Timestamp")
-            axes.set_ylabel("RTT m/s")
-            xfmt = md.DateFormatter('%H:%M')
-            axes.xaxis.set_major_formatter(xfmt)
-            axes.plot(x_axis, y_axis)
+            graphs.append(
+                create_timestamp_graph(x_axis=x_axis,
+                                       y_axis=y_axis,
+                                       x_axis_name="Timestamp",
+                                       y_axis_name="RTT m/s",
+                                       title=f"Response Time (8h) - {cubicle.name}")
+                        )
 
-            figure.tight_layout()
-
-            buf = BytesIO()
-            figure.savefig(buf, format="png")
-            graphs.append(b64encode(buf.getbuffer()).decode("ascii"))
             val['graphs'] = graphs
         case _:
             return render_template('admin/modal/error.html')
 
     return render_template(f'admin/modal/{_type}.html', obj=val)
 
-@admin.route('/admin/modal/<_type>/<_id>', methods=['POST'])
+@admin.route('/modal/<_type>/<_id>', methods=['POST'])
 def modal_update_id(_type, _id):
     """ Update modal based on type and id """
     try:
@@ -533,18 +530,24 @@ def modal_update_id(_type, _id):
                 ip_address(node_ip)
             except ValueError:
                 return _modal_status_message('error', 'IP address is in a bad format')
-            else:
-                node.ip_address = node_ip
+            node.ip_address = node_ip
+
+            api_key = request.form.get('api_key')
+            try:
+                int(api_key, 16)
+            except ValueError:
+                return _modal_status_message('error', 'API key is not a hex value')
+            node.api_key = api_key
 
             network_range = request.form.get('network_range')
             try:
                 ip_network(network_range)
             except ValueError:
                 return _modal_status_message('error', 'Network range is in a bad format')
-            else:
-                node.network_range = network_range
-                # TODO: Delete old networks if the range is changed
-                generate_networks(node, network_range)
+
+            node.network_range = network_range
+            # TODO: Delete old networks if the range is changed
+            generate_networks(node, network_range)
 
             node.last_activity = datetime.utcnow()
 
@@ -619,7 +622,7 @@ def modal_update_id(_type, _id):
 
     return _modal_status_message('ok', return_msg)
 
-@admin.route('/admin/modal/<_type>/<_id>', methods=['DELETE'])
+@admin.route('/modal/<_type>/<_id>', methods=['DELETE'])
 def modal_delete_id(_type, _id):
     """ Delete modal based on type and id"""
     try:
@@ -640,7 +643,70 @@ def modal_delete_id(_type, _id):
 
     return _modal_status_message('ok', return_msg)
 
-@admin.route('/admin/generate-qr/<_id>', methods=['GET'])
+@admin.route('/modal/measurement/<_type>/<_id>', methods=['GET'])
+def modal_get_measurement_id(_type, _id):
+    """ Get modal based on which type and id are requested """
+    try:
+        _type, _id = _normalize_input_variables(_type, _id)
+    # pylint: disable=W0719:broad-exception-caught
+    except Exception:
+        return render_template('admin/modal/error.html')
+
+    obj = _get_type(_type)
+
+    if obj is None:
+        return render_template('admin/modal/error.html')
+
+    val = {}
+    match _type:
+        case 'node':
+            graphs = []
+
+            node = Node.query.filter_by(id=_id).first()
+            x_axis = []
+            y_axis = []
+
+            # pylint: disable=C0301:line-too-long
+            for reponse_time in ResponseTimeNode.query.filter_by(node_id=node.id).filter(ResponseTimeNode.timestamp > (datetime.now() - timedelta(hours=8))):
+                x_axis.append(reponse_time.timestamp)
+                y_axis.append(reponse_time.rtt)
+
+            graphs.append(
+                create_timestamp_graph(x_axis=x_axis,
+                                       y_axis=y_axis,
+                                       x_axis_name="Timestamp",
+                                       y_axis_name="RTT m/s",
+                                       title=f"Response Time (8h) - {node.name}")
+                        )
+
+            val['graphs'] = graphs        
+        case 'cubicle':
+            graphs = []
+
+            cubicle = Cubicle.query.filter_by(id=_id).first()
+            x_axis = []
+            y_axis = []
+
+            # pylint: disable=C0301:line-too-long
+            for reponse_time in ResponseTimeCubicle.query.filter_by(cubicle_id=cubicle.id).filter(ResponseTimeCubicle.timestamp > (datetime.now() - timedelta(hours=8))):
+                x_axis.append(reponse_time.timestamp)
+                y_axis.append(reponse_time.rtt)
+
+            graphs.append(
+                create_timestamp_graph(x_axis=x_axis,
+                                       y_axis=y_axis,
+                                       x_axis_name="Timestamp",
+                                       y_axis_name="RTT m/s",
+                                       title=f"Response Time (8h) - {cubicle.name}")
+                        )
+
+            val['graphs'] = graphs
+        case _:
+            return render_template('admin/modal/error.html')
+
+    return render_template('admin/modal/measurement.html', obj=val)
+
+@admin.route('/generate-qr/<_id>', methods=['GET'])
 def generate_qr(_id):
     """ Generate a QR code based on user ID"""
     try:
@@ -675,42 +741,112 @@ def generate_qr(_id):
         'uri': totp_uri,
     }
 
-@admin.route('/admin/events', methods=['GET'])
+@admin.route('/events', methods=['GET'])
 def events():
     """ Events route for admin GUI """
     return render_template('admin/events.html', events=EventLog.query.all())
 
-@admin.route('/admin/measurements', methods=['GET'])
+@admin.route('/measurements', methods=['GET'])
 def measurement():
     """ Measurement route for admin GUI """
 
+    # If cookie is present, use it. otherwise, set 8 hours as default.
+    if "divisora_graphtimerange" in request.cookies:
+        time_range = request.cookies.get('divisora_graphtimerange')
+    else:
+        time_range = 8
+
+    # Verify that time_range cookie really is an integer
+    if not isinstance(time_range, int):
+        try:
+            time_range = int(time_range)
+        except (TypeError, ValueError):
+            # Default to 8 hours if no value can be parsed
+            time_range = 8
+
+    # If the value deviate from our fixde range, set it to 8 hours
+    if time_range not in [4, 8, 24, 48, 168]:
+        time_range = 8
+
     graphs = []
 
-    for cubicle in Cubicle.query.all():
+    # Cubicles
+    cubicles = db.session.execute(db.select(Cubicle.id, Cubicle.name)).all()
+    for cubicle_id, cubicle_name, in cubicles:
         x_axis = []
         y_axis = []
+        for response_time, in db.session.execute(db.select(ResponseTimeCubicle)
+                                                 # pylint: disable=C0301:line-too-long
+                                                 .where(ResponseTimeCubicle.cubicle_id == cubicle_id)
+                                                 # pylint: disable=C0301:line-too-long
+                                                 .where(ResponseTimeCubicle.timestamp > (datetime.now() - timedelta(hours=time_range)))
+                                                 ).all():
+            # Pad the beginning if response times are "missing"
+            if len(x_axis) < 1:
+                compare_time = datetime.now()
+                while response_time.timestamp < compare_time:
+                    x_axis.append(compare_time)
+                    y_axis.append(0.0)
+                    compare_time -= timedelta(minutes=1)
+            else:
+                # Check if we have a time-gap
+                # If there is a gap, padd values until the gap is less than a minute
+                compare_time = x_axis[-1:][0] - timedelta(minutes=1)
+                while response_time.timestamp < compare_time:
+                    x_axis.append(compare_time)
+                    y_axis.append(0.0)
+                    compare_time -= timedelta(minutes=1)
 
-        for reponse_time in cubicle.measurements:
-            x_axis.append(reponse_time.timestamp)
-            y_axis.append(reponse_time.rtt)
+            x_axis.append(response_time.timestamp)
+            y_axis.append(response_time.rtt)
 
-        figure, axes = plt.subplots()
-        figure.set_figwidth(8)
-        figure.set_figheight(3)
-        axes.set_title(f"Response Time - {cubicle.name}")
-        axes.set_xlabel("Timestamp")
-        axes.set_ylabel("RTT m/s")
-        xfmt = md.DateFormatter('%H:%M')
-        axes.xaxis.set_major_formatter(xfmt)
-        axes.plot(x_axis, y_axis)
+        graphs.append(
+            create_timestamp_graph(x_axis=x_axis,
+                                   y_axis=y_axis,
+                                   x_axis_name="Timestamp",
+                                   y_axis_name="RTT m/s",
+                                   title=f"Response Time ({time_range}h) - {cubicle_name}")
+                    )
 
-        figure.tight_layout()
+    # Nodes
+    nodes = db.session.execute(db.select(Node.id, Node.name)).all()
+    for node_id, node_name, in nodes:
+        x_axis = []
+        y_axis = []
+        for response_time, in db.session.execute(db.select(ResponseTimeNode)
+                                                 # pylint: disable=C0301:line-too-long
+                                                 .where(ResponseTimeNode.node_id == node_id)
+                                                 # pylint: disable=C0301:line-too-long
+                                                 .where(ResponseTimeNode.timestamp > (datetime.now() - timedelta(hours=time_range)))
+                                                 ).all():
+            # Pad the beginning if response times are "missing"
+            if len(x_axis) < 1:
+                compare_time = datetime.now()
+                while response_time.timestamp < compare_time:
+                    x_axis.append(compare_time)
+                    y_axis.append(0.0)
+                    compare_time -= timedelta(minutes=1)
+            else:
+                # Check if we have a time-gap
+                # If there is a gap, padd values until the gap is less than a minute
+                compare_time = x_axis[-1:][0] - timedelta(minutes=1)
+                while response_time.timestamp < compare_time:
+                    x_axis.append(compare_time)
+                    y_axis.append(0.0)
+                    compare_time -= timedelta(minutes=1)
 
-        buffer = BytesIO()
-        figure.savefig(buffer, format="png")
-        graphs.append(b64encode(buffer.getbuffer()).decode("ascii"))
+            x_axis.append(response_time.timestamp)
+            y_axis.append(response_time.rtt)
 
-    return render_template('admin/measurements.html', graphs=graphs)
+        graphs.append(
+            create_timestamp_graph(x_axis=x_axis,
+                                   y_axis=y_axis,
+                                   x_axis_name="Timestamp",
+                                   y_axis_name="RTT m/s",
+                                   title=f"Response Time ({time_range}h) - {node_name}")
+                    )
+
+    return render_template('admin/measurements.html', time_range=time_range, graphs=graphs)
 
 def _modal_status_message(status, text):
     return render_template('admin/modal/status.html', info={
