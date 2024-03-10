@@ -40,7 +40,7 @@ def celery_init_app(app: Flask) -> Celery:
     # from app.tasks import schedule
 
     celery_app.autodiscover_tasks([
-        # 'app.tasks.schedule.check_all_nodes',
+        'app.tasks.schedule.check_all_nodes',
         # 'app.tasks.schedule.check_responsetime_cubicles',
         # 'app.tasks.schedule.check_responsetime_nodes',
         'app.tasks.schedule.check_node_compliance',

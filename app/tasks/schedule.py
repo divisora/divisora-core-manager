@@ -24,23 +24,32 @@ from app.models.node import Node
 from app.models.node import STATUS_UP, STATUS_ERROR, STATUS_DOWN
 from app.models.measurements import ResponseTimeCubicle, ResponseTimeNode
 
-# @current_celery_app.task()
-# def check_all_nodes():
-#     """ Check if all nodes are alive """
+def construct_node_url(node: Node) -> str:
+    """ Construct the URL for a Node """
+    if node.domain_name != "":
+        url = f"http://{node.domain_name}:{node.port}"
+    else:
+        url = f"http://{node.ip_address}:{node.port}"
+    return url
 
-#     for node in Node.query.all():
-#         try:
-#             with urllib.request.urlopen(f"http://{node.ip_address}", timeout=2) as response:
-#                 if response.getcode() == 200:
-#                     node.status = STATUS_UP
-#                 else:
-#                     node.status = STATUS_ERROR
-#         except (urllib.error.HTTPError, urllib.error.URLError):
-#             node.status = STATUS_DOWN
-#         except socket.timeout:
-#             node.status = STATUS_DOWN
+@shared_task(bind=True)
+# pylint: disable-next=W0613:unused-argument
+def check_all_nodes(self):
+    """ Check if all nodes are alive """
+    nodes = db.session.execute(select(Node)).scalars().all()
+    for node in nodes:
+        logger.info(f"Checking if {node.name} ({url}) is alive")
+        url = construct_node_url(node)
+        try:
+            with urllib.request.urlopen(f"{url}", timeout=2) as response:
+                if response.getcode() == 200:
+                    node.status = STATUS_UP
+                else:
+                    node.status = STATUS_ERROR
+        except (urllib.error.HTTPError, urllib.error.URLError, socket.timeout):
+            node.status = STATUS_DOWN
 
-#     db.session.commit()
+    db.session.commit()
 
 # @current_celery_app.task()
 # def check_responsetime_cubicles():
@@ -138,7 +147,7 @@ def check_node_compliance(self):
         stmt = (
             select(Cubicle)
             .options(selectinload(Cubicle.node))
-            .where(Cubicle.active == True, Cubicle.node_id == node.id)
+            .where(Cubicle.active is True, Cubicle.node_id == node.id)
         )
         active_cubicles = db.session.execute(stmt).scalars().all()
 

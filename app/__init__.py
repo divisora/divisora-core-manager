@@ -29,7 +29,7 @@ def create_app():
     ## Database
     db.init_app(app)
     migrate.init_app(app, db)
-    
+
     if getenv('FLASK_DB') == "populate":
         # pylint: disable=C0415:import-outside-toplevel
         from app.models.node import Node
